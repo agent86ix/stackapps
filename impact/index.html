@@ -1,0 +1,586 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<title>StackImpact</title>
+<link type="text/css" href="../js/blue/style.css" rel="Stylesheet" />
+<link type="text/css" href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.16/themes/cupertino/jquery-ui.css" rel="Stylesheet" />	
+<style type="text/css">
+
+	body{ font: 90% "Trebuchet MS", sans-serif; margin: 20px;}
+	
+	.post-score { 
+		padding: 3px 3px 3px 2px;
+		height: 15px;
+		line-height: 1.3;
+		margin-right: 10px;
+		text-align: center;
+		min-width: 20px;
+	}
+	.post-title {
+		width:600px;
+	}
+	.progress-bar {
+		width: 300px;
+		height:15px;
+		padding: 5px;
+	}
+	
+	.shadowbox {
+	  -moz-box-shadow:    3px 3px 5px 6px #ccc;
+	  -webkit-box-shadow: 3px 3px 5px 6px #ccc;
+	  box-shadow:         3px 3px 5px 6px #ccc;
+	  background-color: #eee;
+	  padding:15px;
+	}
+	
+	.tag {
+		font-size: .9em;
+		padding: 3px 4px;
+		margin: 5px;
+		border-width: 0px 1px 1px 0px;
+		background-color: white;
+		color: #666;
+		border-color: #666;
+		border-style: solid;
+		cursor: auto;
+		text-decoration: none;
+		line-height: 180%;
+	}
+	
+	.small-button { font-size:12px; }
+	
+	.accepted { background-color: green; color:white; }
+
+	
+</style>
+
+<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.6.4/jquery.min.js"></script>
+<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.16/jquery-ui.min.js"></script>
+<script type="text/javascript" src="../js/api.js"></script>
+<script type="text/javascript" src="../js/common.js"></script>
+<script type="text/javascript" src="../js/sitelist.js"></script>
+<script type="text/javascript" src="../js/jquery.iecors.js"></script>
+
+<script type="text/javascript" src="../js/jquery.cookies.min.js"></script>
+
+<script type="text/javascript" src="../js/jquery.tablesorter.min.js"></script>
+<script type="text/javascript">
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-26396490-1']);
+  _gaq.push(['_trackPageview']);
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+</script>
+<script type="text/javascript" language="javascript">
+/* Quantcast 
+http://www.quantcast.com/api/dataapi?range=1m&period=daily&country=&countType=PEOPLE%2CHOURLY_SESSIONS%2CARRIVALS%2CCOOKIES&domain=wd%3Acom.stackexchange.gaming&mobile=false
+
+	model.reach.0.reach.<day_idx>.reach.ARRIVALS.GLOBAL
+    also in <day_idx>.date = date timestamp
+    also */
+
+var api = StackExchangeAPI;
+
+var user_site = "stackoverflow";
+var user_id = 0;
+
+var start_timestamp = -1;
+
+
+/* Adapted from: http://stackoverflow.com/a/2587398 */
+function parse_date(input) {
+  var parts = input.match(/(\d+)/g);
+  // new Date(year, month [, date [, hours[, minutes[, seconds[, ms]]]]])
+  return new Date(parts[0], parts[1]-1, parts[2]); // months are 0-based
+}
+
+function on_error() {
+
+}
+
+function on_question_list_success(json) {
+	/* just write the question list out to the tables */
+	if(!('items' in json)) {
+		$("#output_tables").html("A serious error has occurred :(");
+		return;
+	}
+	
+	var site_url = stackexchange_site_array[user_site].site_url;
+	var day_id = 0;
+	
+	var weekly_rep = 0;
+	var weekly_adj_views = 0;
+	var q_count = 0;
+	var total_pct_rep = 0;
+	
+	for(var item_id in json.items) {
+		var item = json.items[item_id]
+		var total_rep = 0;
+		var score_class = "";
+		
+		q_count += 1;
+		
+		var q_rep = item['up_vote_count']*5 - (item['down_vote_count']*2);
+		if(q_rep < 0) q_rep = 0;
+		
+		total_rep += q_rep;
+		
+		if('answers' in item) {
+			for(var answer_id in item.answers) {
+				var cur_answer = item.answers[answer_id];
+				var up_vote_count = cur_answer.up_vote_count;
+				var down_vote_count = cur_answer.down_vote_count;
+				
+				var cur_answer_rep = up_vote_count*10 - (down_vote_count*2);
+				
+				if(cur_answer_rep > 0) 
+					total_rep +=  cur_answer_rep;
+			}
+		}
+		if('accepted_answer_id' in item) {
+			total_rep += 17;
+			q_rep += 2;
+			score_class = "accepted";
+		}
+		
+		var pct_rep = 0.0;
+		if(total_rep != 0) {
+			pct_rep = (q_rep * 1.0) / (total_rep) * 100;
+		}
+		
+		var adj_views = item['view_count']*pct_rep/100;
+		
+		var title = '<a target="_blank" href="'+site_url+'/q/'+item['question_id']+'">'+
+			item['title']+'</a>';
+			
+		var score_views = (item['score']*1.0)/item['view_count']*100;
+		
+		total_pct_rep += pct_rep;
+		weekly_rep += q_rep;
+		weekly_adj_views += adj_views;
+	
+		var output = 
+			'<tr><td>'+title+'</td>'+
+			'<td><span class="post-score '+score_class+'">'+item['score']+'</span></td>'+
+			'<td>'+q_rep+'</td>'+
+			'<td>'+pct_rep.toFixed(1)+'% </td>'+
+			'<td>'+item['view_count']+'</td>'+			
+			'<td>'+adj_views.toFixed(0)+'</td>'+
+			'<td>'+score_views.toFixed(2)+'% </td></tr>';
+		
+		day_id = Math.floor((item['creation_date']-start_timestamp/1000)/(24*60*60));
+		day_id = day_id.toFixed(0);
+		if(day_id > 6 || day_id < 0) {
+			console.log(item['creation_date']);
+		}
+		
+		$("#q"+day_id).append(output);
+	}
+	
+	for(var i = 0; i<7; i++) {
+		$("#q"+i).trigger("update");
+	}
+	
+	if(q_count != 0) {
+		total_pct_rep = total_pct_rep/q_count;
+	}
+		
+	$("#q_summary").html('You asked '+q_count+' questions, which earned you a maximum of '+weekly_rep+' rep and contributed around '+
+		weekly_adj_views.toFixed(0)+' views.  Your average rep percentage for these questions was '+total_pct_rep.toFixed(1)+'%.');
+}
+
+var answer_dict = {};
+
+function on_answer_question_list_success(json) {
+	if(!('items' in json)) {
+		return;
+	}
+	var site_url = stackexchange_site_array[user_site].site_url;
+	
+	var weekly_rep = 0;
+	var weekly_adj_views = 0;
+	var a_count = 0;
+	var total_pct_rep = 0;
+	
+	for(var item_id in json.items) {
+		var item = json.items[item_id];
+		var score_class = "";
+		if(!(item['question_id'] in answer_dict)) {
+			/* not a question ID we asked about, why is this here? */
+			continue;
+		}
+		if(!('answers' in item)) {
+			/* no answers to this question, but we answered it? */
+			continue;
+		}
+		
+		a_count += 1;
+		
+		var user_answer = answer_dict[item['question_id']];
+		
+		var total_rep = 0;
+		
+		var q_rep = item['up_vote_count']*5 - (item['down_vote_count']*2);
+		if(q_rep < 0) q_rep = 0;
+
+		total_rep += q_rep;		
+		
+		for(var answer_id in item.answers) {
+			var answer = item.answers[answer_id];
+			var answer_rep = answer['up_vote_count']*10 - (answer['down_vote_count']*2);
+			if(answer_rep > 0)
+				total_rep += answer_rep;
+		}
+		if('accepted_answer_id' in item) {
+			total_rep += 15;
+		}
+		
+		var user_answer_rep = user_answer['up_vote_count']*10 - (user_answer['down_vote_count']*2);
+		if(user_answer.is_accepted) {
+			score_class = "accepted";
+			user_answer_rep += 15;
+		}
+		if(user_answer_rep < 0) user_answer_rep = 0;
+		
+		var pct_rep = 0.0;
+		if(total_rep != 0) {			
+			pct_rep = (user_answer_rep*1.0)/(total_rep) * 100;
+		}
+		
+		var adj_views = item['view_count']*pct_rep/100;
+		
+		var title = '<a target="_blank" href="'+site_url+'/a/'+user_answer['answer_id']+'">'+
+			item['title']+'</a>';
+		
+		//'<table class="tablesorter"><thead><th class="post-title">Answer</th><th>Score</th>'+
+		//	'<th>Rep</th><th>% Rep</th><th>Views</th><th>Adj. Views</th><th>Score/Views</th></thead>'+
+		
+		var score_views = user_answer['score']/item['view_count']*100;
+		
+		total_pct_rep += pct_rep;
+		weekly_rep += user_answer_rep;
+		weekly_adj_views += adj_views;
+		
+		var output = 
+			'<tr><td>'+title+'</td>'+
+			'<td><span class="post-score '+score_class+'">'+user_answer['score']+'</span></td>'+
+			'<td>'+user_answer_rep+'</td>'+
+			'<td>'+pct_rep.toFixed(1)+'% </td>'+
+			'<td>'+item['view_count']+'</td>'+			
+			'<td>'+adj_views.toFixed(0)+'</td>'+
+			'<td>'+score_views.toFixed(2)+'% </td>'+
+			'</tr>';
+		
+		var day_id = 0;
+		
+		day_id = Math.floor((user_answer['creation_date']-start_timestamp/1000)/(24*60*60));
+		day_id = day_id.toFixed(0);
+		if(day_id > 6 || day_id < 0) {
+			console.log(user_answer['creation_date']);
+		}
+		
+		$("#a"+day_id).append(output);
+	
+	}
+	
+	for(var i = 0; i<7; i++) {
+		$("#a"+i).trigger("update");
+	}
+	
+	if(a_count != 0) {
+		total_pct_rep = total_pct_rep/a_count;
+	}
+	
+	$("#a_summary").html('You answered '+a_count+' questions, which earned you a maximum of '+weekly_rep+' rep and contributed around '+
+		weekly_adj_views.toFixed(0)+' views.  Your average rep percentage for these answers was '+total_pct_rep.toFixed(1)+'%.');
+
+	
+}
+
+function on_answer_list_success(json) {
+	/* Have to read all the ID's and then query the questions */
+	if(!('items' in json)) {
+		return;
+	}
+	
+	var question_id_list = [];
+	
+	var args = {site: user_site, filter: '!5*97ix7qoV*dBbcW2AE6DOvrK7mzYHvIQQsXVW'};
+	
+	for(var item_id in json.items) {
+		var item = json.items[item_id];
+		if(item.question_id in answer_dict) {
+			answer_dict[item.question_id].score += item['score'];
+			answer_dict[item.question_id].up_vote_count += item['up_vote_count'];
+			answer_dict[item.question_id].down_vote_count += item['down_vote_count'];
+			if(!answer_dict[item.question_id].is_accepted) {
+				answer_dict[item.question_id].is_accepted = item['is_accepted'];
+			}
+		} else {
+			answer_dict[item.question_id] = {
+				answer_id:item['answer_id'],
+				creation_date:item['creation_date'],
+				score:item['score'],
+				is_accepted:item['is_accepted'],
+				title:item['title'],
+				up_vote_count:item['up_vote_count'],
+				down_vote_count:item['down_vote_count'],
+			};
+			question_id_list.push(item.question_id);
+		}
+	}
+	
+	api.call('/questions/'+question_id_list.join(';'), args,
+		on_answer_question_list_success, on_error);
+	
+	
+}
+
+function refresh_all() {
+	if(user_id == 0) return;
+
+	var end_timestamp = start_timestamp + 24*60*60*1000*7;
+
+	var api_start = start_timestamp/1000;
+	var api_end = end_timestamp/1000;
+	
+	answer_dict = {};
+	
+	var common_args = {site: user_site, sort:'creation', order:'asc',
+		fromdate: api_start.toFixed(0), todate: api_end.toFixed(0), pagesize:100};
+		
+	api.call("/users/"+user_id+"/questions/", 
+		$.extend({filter:'!P0CcKOgwf3-A4mk(vOgkwdN1m8d3ikFzAa_Ky*qg8Tt'}, common_args),
+		on_question_list_success, on_error);
+
+	api.call("/users/"+user_id+"/answers/", 
+		$.extend({filter:'!)rNEZi5FaqXVZTEyjR0)'}, common_args),
+		on_answer_list_success, on_error);
+
+
+}
+
+
+function on_auth_success(json) {
+	
+	if(!('items' in json) || json.items.length == 0) {
+		$("#account").html('<span style="color:red">You don\'t have an account on this site!</span>');
+		clear_output();
+		return;
+	}
+	
+	var user = json.items[0];
+	
+	user_id = user['user_id'];
+	$("#account").html('<a target="_blank" href="'+stackexchange_site_array[user_site].site_url+'/users/'+user_id+'">'+
+		user['display_name'] + "</a>");
+		
+	
+	var re = new RegExp("^https?:\/\/");
+	var quant_url = stackexchange_site_array[user_site].site_url;
+	quant_url = quant_url.replace(re, "");
+	
+	$("#quantcast").html("<iframe frameborder='0' scrolling='no' marginheight='0' marginwidth='0' height='120' width='160' "+
+		"src='http://widget.quantcast.com/"+quant_url+"/10?timeWidth=7&daysOfData=90'></iframe>");
+	
+	refresh_all();
+
+	
+}
+
+function on_auth_fail(request, status, error) {
+	reset_output();
+	$("#account").html('<span style="color:red">Your access token is invalid or has been revoked!  Try getting a new one with the "Reset Access Token" button.</span>');
+	
+}
+
+function reset_output() {
+	var output = "";
+	var day_names = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+	for(var i = 0; i<7; i++) {
+		var cur_date = new Date(start_timestamp + 24*60*60*1000*i);
+		output = output + '<h2>'+day_names[i]+', '+cur_date.getUTCFullYear()+'/'+
+			(cur_date.getUTCMonth()+1)+'/'+cur_date.getUTCDate()+'</h2>'+
+			'<table class="tablesorter"><thead><th class="post-title">Questions</th><th>Score</th>'+
+			'<th>Rep</th><th>% Rep</th><th>Views</th><th>Adj. Views</th><th>Score/Views</th></thead>'+
+			'<tbody id="q'+i+'"></tbody></table>';
+			
+		output = output + 
+			'<table class="tablesorter"><thead><th class="post-title">Answers</th><th>Score</th>'+
+			'<th>Rep</th><th>% Rep</th><th>Views</th><th>Adj. Views</th><th>Score/Views</th></thead>'+
+			'<tbody id="a'+i+'"></tbody></table>';
+
+	}
+
+	$("#output_tables").html(output);
+	$(".tablesorter").tablesorter();
+	
+	$("#q_summary").html("Loading...");
+	$("#a_summary").html("Loading...");
+}
+
+function compute_timestamps() {
+
+}
+
+$(document).ready(function() {
+	var client_id = 92;
+	var args = {key:encodeURI('q)W9nnJHao8y9yhPE)Dabw((')};
+	var tmp_date = new Date();
+	var initial_date = tmp_date.getUTCFullYear()+"/"+(tmp_date.getUTCMonth()+1)+"/"+tmp_date.getUTCDate();
+	
+	try {
+		var stored_user_site = $.cookies.get('badges_user_site');
+		if(stored_user_site != null) user_site = stored_user_site;
+		var stored_user_date = $.cookies.get('impact_user_date');
+		if(stored_user_date != null) initial_date = stored_user_date;
+	} catch (err) {
+	
+	}
+
+	api.init(client_id, args);
+	
+	api.auth(user_site, on_auth_success, on_auth_fail);
+
+
+	
+	
+	reset_output();
+	
+	$("#siteselect").html(api.build_site_select(stackexchange_site_array));
+	
+	$("#siteselect").val(user_site);
+	$("#siteselect").change(function (e) {
+		user_site = $("#siteselect").val();
+		$.cookies.set('badges_user_site', $("#siteselect").val());
+		
+		api.abort_queue();
+		reset_output();
+		api.auth(user_site, on_auth_success, on_auth_fail);
+	});
+	
+	$("#datepicker").datepicker().datepicker("option", "dateFormat", "yy/mm/dd");
+	$("#datepicker").change(function () {
+		var cur_date = parse_date($("#datepicker").val());
+		if(cur_date == null) {
+			return;
+		}
+
+		cur_date.setUTCHours(0);
+		cur_date.setUTCSeconds(0);
+		cur_date.setUTCMinutes(0);
+		cur_date.setUTCMilliseconds(1);
+		var weekday = cur_date.getDay();
+		start_timestamp = (cur_date.getTime() - (weekday+1)*24*60*60*1000);
+		if(isNaN(start_timestamp)) return;
+		
+		$.cookies.set('impact_user_date', $("#datepicker").val());
+		
+		reset_output();
+		refresh_all();
+	});
+	
+	$("#datepicker").val(initial_date);
+	$("#datepicker").change();
+
+	$("#refresh").click(function (e) {
+		api.abort_queue();
+		reset_output();
+		api.auth(user_site, on_auth_success, on_auth_fail);
+		e.preventDefault();
+	}).button();
+
+	$("#token_reset").click(function (e) {
+		api.abort_queue();
+		api.reset_access_token(client_id);
+		e.preventDefault();
+	}).button();
+
+	$("#revoke").click(function (e) {
+		clear_output();
+		api.abort_queue();
+		api.revoke_access();
+		alert("Your authorization has been revoked.");
+		e.preventDefault();
+	});	
+	$("#help_toggle").click(function(e) {
+		$("#help_area").toggle(500);
+	});
+	
+});
+</script>
+</head>
+
+<body>
+
+
+<div class="shadowbox">
+
+<div><img src="./mallet.png"><h2 style="display:inline;vertical-align:top">StackImpact</h2></div>
+
+<p>Check my impact on: <select id="siteselect"></select></p>
+<p>
+Your account on this site: <span id="account">(No account information loaded yet)</span>   
+<a href="#" class="small-button" id="refresh">Refresh</a>   
+<a href="#" class="small-button" id="token_reset">Reset Access Token</a>
+</p>
+
+<p id="help_toggle"><b>What does all of this mean?  Click for help.</b></p>
+
+<div id="help_area" style="display:none">
+<p>After selecting a site and a date, you'll see your questions and answers, grouped by date,
+for the week you've selected in the tables below.</p>
+
+<p>The "Weekly Summary" section shows general statistics about your participation in the
+site on that week.</p>
+
+<p>Each "Daily Summary" table contains the following information, in order from left to right:
+
+<ul>
+<li><b>Question or Answer</b> title and link</li>
+<li><b>Score:</b> The current "score" of this post (including both up and down votes)</li>
+<li><b>Rep:</b> The amount of rep these votes represent, assuming you didn't hit the daily cap from votes on this post.</li>
+<li><b>% Rep:</b> The percentage of all the rep on the question that you gained from your answer.</li>
+<li><b>Views:</b> The total number of views the question has, to date.</li>
+<li><b>Adj. Views:</b> The number of views you get "credit" for, assuming the views are divided among
+the post authors based on the percentage of the rep they got on the question.</li>
+<li><b>Score/Views:</b> The ratio of the post's score to the total number of views, expressed as a percent.
+  Essentially, what percentage of the people who viewed the question thought you deserved something
+  for your contribution?</li>
+
+<p>To simplify the math involved, I am considering posts that have an overall negative rep to contribute 0 rep instead. </p>
+</ul>
+
+
+</div>
+
+
+
+<table width="100%"><tr>
+<td>
+<div id="quantcast"></div>
+
+</td>
+<td width="100%">
+<p><b>Weekly summary:</b></p>
+<p>Choose a date to generate that week's stats: <input type="text" id="datepicker"></p>
+
+<p id="q_summary">Loading...</p>
+<p id="a_summary">Loading...</p>
+
+</td></tr></table>
+
+
+<div id="output_tables"></div>
+
+<p>This application uses an "access token" to access your account information 
+on the StackExchange network.  If you'd like, you can <a href="#" id="revoke">revoke</a> 
+this permission.</p>
+<div id="pagefooter"></div>
+
+</div>
+</body>
+</html>

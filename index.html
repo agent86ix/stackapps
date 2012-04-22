@@ -1,0 +1,62 @@
+<html>
+<head>
+<style type="text/css">
+body{ font: 90% "Trebuchet MS", sans-serif; margin: 20px;}
+	.shadowbox {
+	  -moz-box-shadow:    3px 3px 5px 6px #ccc;
+	  -webkit-box-shadow: 3px 3px 5px 6px #ccc;
+	  box-shadow:         3px 3px 5px 6px #ccc;
+	  background-color: #eee;
+	  padding:15px;
+	}
+</style>
+
+<title>agent86's StackExchange tools home</title>
+</head>
+<body>
+<div class="shadowbox">
+
+<h2>agent86's StackExchange tools</h2>
+
+<p>What follows is a quick listing of the tools I host here.  When they are completed, my apps are listed on
+ StackApps.  You can browse my submitted app list <a href="http://stackapps.com/search?q=%5Bapp%5D+user%3A9073">here, </a>
+ or my submitted scripts <a href="http://stackapps.com/search?q=%5Bscript%5D+user%3A9073">here.</a></p>
+ 
+<p>Do note that most of my apps use the StackExchange API, and therefore <b>you may be asked to 
+authorize the app</b> to access your StackExchange identity.  This allows the app to determine
+your numeric user ID on the sites in the network where you have accounts.  If you're curious what
+ information is retrieved, you can take a look at the <a href="https://api.stackexchange.com/docs/types/user">documentation.</a>  
+ (It essentially boils down to the public information in your profile.)</p>
+
+<p>All of my browser-based applications utilize <b>client side Javascript</b> - I am never privvy to your
+information, personally.  All traffic is between your browser and the StackExchange servers.  (The one exception to 
+ this is StinkingBadges' use of PHP to grab your reputation graph, which will be changed eventually)  Your access token
+ is part of the URL that is not passed to my servers, and cannot be read by any server-side scripts.  Additionally,
+ all of this code is open source and available for your review - if it's not already in your browser, please
+ visit the relevant StackApps page.</p>
+
+<p>If you wish to manage or revoke this access, you can do so from your profile on any StackExchange site.  
+Click your name on any SE site (it's next to your reputation) and then click the "apps" link in the upper
+right.  From this page you can revoke any access you've granted to any application, including these.</p>
+
+<h3>Currently Available Applications/Scripts:</h3>
+
+<ul>
+<li><a href="seci/">ChatterBox</a> - adds a button to the StackExchange Chat interface to view your StackExchange inbox.
+</li>
+<li><a href="badge/">StinkingBadges</a> - Check your progress towards long-term badges with the SE API v2.0</li>
+<li><a href="impact/">StackImpact</a> - Take a look at how your contributions effected StackExchange this week.</li>
+<li><a href="stats/">StatsExchange</a> - Easily generate statistics from API-based queries.</li>
+<li><a href="laserv/">LaServ</a> - A flexible python+twisted framework for the SE API 2.0, currently including IRC support.</li>
+<!-- <li><a href="me3/">ME3Mission</a> - <b>(LIMITED TIME!)</b> 
+Tracking 
+for the Gaming.StackExchange Mass Effect 3 promotion.</li> -->
+</ul>
+
+<p>This is still a work in progress - I'm a coder more than a designer, so I apologize for the spartan
+ layout and limited style :)</p>
+
+<p>Hosted as a part of <a href="http://www.withoutthesarcasm.com">Without The Sarcasm</a>, a gaming blog/community that I helped to found.</p>
+</div>
+</body>
+</html>

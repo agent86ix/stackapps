@@ -1,0 +1,347 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+ 
+<html>
+<head>
+<title>ME3Missions</title>
+<link href='http://fonts.googleapis.com/css?family=Lato:700|Orbitron' rel='stylesheet' type='text/css'>
+<link type="text/css" href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.16/themes/trontastic/jquery-ui.css" rel="Stylesheet" />	
+<style type="text/css">
+
+	body{ font: 90% "Lato", "Consolas", "Lucidia Console", monospace; margin: 20px; background-color:black}
+	td{padding:2px;}
+	table {border-collapse:collapse;}
+	.post-score { 
+		padding: 3px 3px 3px 2px;
+		height: 15px;
+		line-height: 1.3;
+		margin-right: 10px;
+		text-align: center;
+		min-width: 20px;
+	}
+	.progress-bar {
+		width: 300px;
+		height:15px;
+		padding: 5px;
+	}
+	
+	.shadowbox {
+	  -moz-box-shadow:    3px 3px 5px 6px #bbb;
+	  -webkit-box-shadow: 3px 3px 5px 6px #bbb;
+	  box-shadow:         3px 3px 5px 6px #bbb;
+	  background-color: #eee;
+	  padding:15px;
+	}
+	
+	.tag {
+		font-size: .9em;
+		padding: 3px 4px;
+		margin: 5px;
+		border-width: 0px 1px 1px 0px;
+		background-color: white;
+		color: #666;
+		border-color: #666;
+		border-style: solid;
+		cursor: auto;
+		text-decoration: none;
+		line-height: 180%;
+	}
+	
+	.small-button { font-size:12px; }
+
+	
+</style>
+<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.6.4/jquery.min.js"></script>
+<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.16/jquery-ui.min.js"></script>
+<script type="text/javascript" src="../js/api.js"></script>
+<script type="text/javascript" src="../js/common.js"></script>
+<script type="text/javascript" src="../js/sitelist.js"></script>
+<script type="text/javascript" src="../js/jquery.iecors.js"></script>
+
+<script type="text/javascript" src="../js/jquery.cookies.min.js"></script>
+<script type="text/javascript">
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-26396490-1']);
+  _gaq.push(['_trackPageview']);
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+</script>
+<script type="text/javascript" language="javascript">
+
+var user_site = "gaming";
+var user_id = 0;
+
+var api = StackExchangeAPI;
+var api_call = StackExchangeAPI.call;
+var api_reset_access_token = StackExchangeAPI.reset_access_token;
+var api_revoke_access = StackExchangeAPI.revoke_access;
+var api_abort_queue = StackExchangeAPI.abort_queue;
+var api_init = StackExchangeAPI.init;
+var api_auth = StackExchangeAPI.auth
+//1330992000
+//1331010000?
+var vote_list_common_args = {pagesize:100, order:'desc', sort:'votes', fromdate: '1331010000' };
+
+var answer_score_dict = {};
+
+function on_answer_question_list_success(json, output_id) {
+	if(!('items' in json)) {
+		$('#'+output_id).html("An error occurred...");
+		return;
+	}
+	var output_html = "";
+	var count = 0;
+
+	
+	for(var item_id in json['items']) {
+		var item = json.items[item_id];
+		
+		if(!('tags' in item)) continue;
+		if($.inArray('mass-effect-3', item.tags) < 0) {
+			continue;
+		}
+		
+		if(!(item.question_id in answer_score_dict[output_id])) continue;
+		var answer = answer_score_dict[output_id][item.question_id];
+
+		var item_path = '/a/'+answer.answer_id+'/'+user_id;
+
+		output_html = output_html + 
+			"<span class=\"post-score\">"+answer.score+
+			'</span> <a target="_blank" href="'+stackexchange_site_array[user_site].site_url+
+			item_path+'">'+item['title']+"</a><br>\n";
+		count++;
+	}
+	
+	output_html += "<br><br>Total: "+count+"<br>\n";
+	
+	if(output_html.length) {
+		$('#'+output_id).html(output_html);
+	} else {
+		$('#'+output_id).html("None of your answers are close to this milestone :(");
+	}
+}
+
+function on_answer_list_success(json, output_id) {
+	if(!('items' in json)) {
+		$('#'+output_id).html("An error occurred...");
+		return;
+	}
+	
+	var question_id_list = [];
+	
+	if(!(output_id in answer_score_dict)) {
+		answer_score_dict[output_id] = {};
+	}
+	
+	for(var item_id in json['items']) {
+		var item = json.items[item_id];
+		if('question_id' in item) {
+			question_id_list.push(item.question_id);
+		}
+		if('answer_id' in item) {
+			answer_score_dict[output_id][item.question_id] = 
+				{answer_id:item.answer_id, score:item.score};
+		}
+	}
+	if(question_id_list.length) {
+		var question_ids = question_id_list.join(";");
+		var args = $.extend({site: user_site, filter:'!0Zd_)EEBmLz6jqAEaF6x_JEh3'},
+			vote_list_common_args);
+		api.call("/questions/"+question_ids, args, 
+			function(json) { on_answer_question_list_success(json, output_id); },
+			on_error);
+	} else {
+		$('#'+output_id).html("None of your answers are close to this milestone :(");
+	}
+}
+
+
+function on_question_list_success(json, output_id) {
+	if(!('items' in json)) {
+		$('#'+output_id).html("An error occurred...");
+		return;
+	}
+	
+	output_html = "";
+	var count = 0;
+	
+	for(var item_id in json['items']) {
+		var item = json['items'][item_id];
+		
+		var reject = 0;
+		if(!('tags' in item)) continue;
+		if($.inArray('mass-effect-3', item.tags) < 0) {
+			continue;
+		}
+		
+		var item_path = '/q/'+item['question_id']+'/'+user_id;
+
+		count++;
+		output_html = output_html + 
+			"<span class=\"post-score\">"+item['score']+
+			'</span> <a target="_blank" href="'+stackexchange_site_array[user_site].site_url+
+			item_path+'">'+item['title']+"</a><br>\n";
+	}
+	
+	output_html += "<br>Total: "+count+"<br>\n";
+	
+	if(count) {
+		$('#'+output_id).html(output_html);
+	} else {
+		$('#'+output_id).html("None of your questions are close to this milestone :(");
+	}
+	
+}
+
+
+
+function refresh_all() {
+	answer_score_dict = {};
+	
+	api_call("/users/"+user_id+"/questions/", 
+		$.extend({site: user_site, min: '3', max: '4', filter:'!0Zd_)EEBmLz6jqAEaF6x_JEh3'}, vote_list_common_args),
+		function (json) { on_question_list_success(json, "question_list_bronze") });
+		
+	api_call("/users/"+user_id+"/questions/", 
+		$.extend({site: user_site, min: '6', max: '7', filter:'!0Zd_)EEBmLz6jqAEaF6x_JEh3'}, vote_list_common_args),
+		function (json) { on_question_list_success(json, "question_list_silver") });
+
+	api_call("/users/"+user_id+"/answers/", 
+		$.extend({site: user_site, min: '3', max: '4', filter:'!mRNa90ViDb'}, vote_list_common_args),
+		function (json) { on_answer_list_success(json, "answer_list_bronze") });
+		
+	api_call("/users/"+user_id+"/answers/", 
+		$.extend({site: user_site, min: '6', max: '7', filter:'!mRNa90ViDb'}, vote_list_common_args),
+		function (json) { on_answer_list_success(json, "answer_list_silver") });
+	
+}
+
+function reset_output() {
+	$("#account").html("(No account information loaded yet)");
+
+	$("#question_list_bronze").html('<img src="../common/load.gif">');
+	$("#question_list_silver").html('<img src="../common/load.gif">');
+	
+	$("#answer_list_bronze").html('<img src="../common/load.gif">');
+	$("#answer_list_silver").html('<img src="../common/load.gif">');
+
+}
+
+function clear_output() {
+	$("#question_list_bronze").html('');
+	$("#question_list_silver").html('');
+	
+	$("#answer_list_bronze").html('');
+	$("#answer_list_silver").html('');
+}
+
+function on_auth_success(json) {
+	
+	if(!('items' in json) || json.items.length == 0) {
+		$("#account").html('<span style="color:red">You don\'t have an account on this site!</span>');
+		clear_output();
+		return;
+	}
+	
+	var user = json.items[0];
+	
+	user_id = user['user_id'];
+	$("#account").html('<a target="_blank" href="'+stackexchange_site_array[user_site].site_url+'/users/'+user_id+'">'+
+		user['display_name'] + "</a>");
+	
+	refresh_all();
+
+	
+}
+
+function on_auth_fail(request, status, error) {
+	clear_output();
+	$("#account").html('<span style="color:red">Your access token is invalid or has been revoked!  Try getting a new one with the "Reset Access Token" button.</span>');
+	
+}
+
+function on_error(request, status, error) {
+	alert("An error has occurred!");
+}
+
+$(document).ready(function() {
+	var client_id = 74;
+	var args = {key:encodeURI('tD7YpcY3WuQGUz*f47P21g((')};
+	
+	$("#refresh").click(function (e) {
+		api_abort_queue();
+		reset_output();
+		api_auth(user_site, on_auth_success, on_auth_fail);
+		e.preventDefault();
+	}).button();
+
+	$("#token_reset").click(function (e) {
+		api_abort_queue();
+		api_reset_access_token(client_id);
+		e.preventDefault();
+	}).button();
+
+	$("#revoke").click(function (e) {
+		clear_output();
+		api_abort_queue();
+		api_revoke_access();
+		alert("Your authorization has been revoked.");
+		e.preventDefault();
+	});
+
+	
+	api_init(client_id, args);
+	
+	api_auth(user_site, on_auth_success, on_auth_fail);
+	
+	
+});
+</script>
+
+</head>
+<body>
+<div class="shadowbox">
+<h1 style="font-family: 'Orbitron', sans-serif;">ME3Missions</h1>
+
+<p>
+Your account on Gaming: <span id="account">(No account information loaded yet)</span>   
+<a href="#" class="small-button" id="refresh">Refresh</a>   
+<a href="#" class="small-button" id="token_reset">Reset Access Token</a>
+</p>
+<p>All post links have your user ID embedded in them, for fast and easy sharing. :)</p>
+
+
+<div class="badgelist">
+<h3>Questions close to +5</h3>
+<div id="question_list_bronze"><img src="../common/load.gif"></div>
+</div>
+
+<div class="badgelist">
+<h3>Answers close to +5</h3>
+<div id="answer_list_bronze"><img src="../common/load.gif"></div>
+</div>
+
+
+<div class="badgelist">
+<h3>Questions close to +8</h3>
+<div id="question_list_silver"><img src="../common/load.gif"></div>
+</div>
+
+<div class="badgelist">
+<h3>Answers close to +8</h3>
+<div id="answer_list_silver"><img src="../common/load.gif"></div>
+</div>
+
+
+<hr>
+
+<p>This application uses an "access token" to access your account information 
+on the StackExchange network.  If you'd like, you can <a href="#" id="revoke">revoke</a> 
+this permission.</p>
+<div id="pagefooter"></div>
+</div>
+</body>
+</html>

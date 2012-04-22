@@ -1,0 +1,135 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<title>LaServ Landing Page</title>
+<style type="text/css">
+
+	body{ font: 90% "Trebuchet MS", sans-serif; margin: 20px;}
+	td{padding:5px;}
+	tr{border: 1px solid black;}
+	table {border-collapse:collapse;}
+</style>
+<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.6.4/jquery.min.js"></script>
+<script type="text/javascript">
+
+
+function get_access_token() {
+	/* Code stolen from the demo */
+	var bits = window.location.href.split('#');
+	var fragment = bits[1];
+
+	if (!fragment){
+		return null;
+	}
+
+	// parse fragment into k=v pairs
+	var obj = {};
+	var pairs = fragment.split('&');
+	for (var i=0; i<pairs.length; i++){
+		var pair = pairs[i].split('=');
+		var k = decodeURIComponent(pair[0]);
+		var v = decodeURIComponent(pair[1]);
+		obj[k] = v;
+	}
+	
+	if (obj.access_token){
+		return obj.access_token;
+	}
+	return null;
+	
+}
+
+$(document).ready(function() {
+	$("#gettoken").click(function() {
+		client_id = 47;
+		
+		redirect_url = encodeURI("http://www.withoutthesarcasm.com/laserv/");
+		scope = "";
+		if($("#inbox").attr("checked")) {
+			scope = "&scope=read_inbox";
+		}
+		if($("#noexpire").attr("checked")) {
+			if(scope == "") {
+				scope = "&scope=no_expiry";
+			} else {
+				scope += ",no_expiry";
+			}
+		}
+		
+		url = "https://stackexchange.com/oauth/dialog?client_id="+client_id+scope+
+			"&redirect_uri="+redirect_url;
+		window.location = url;
+	});
+	access_token = get_access_token()
+	if(access_token) {
+		$("#token").val(access_token);
+	}
+});
+</script>
+</head>
+<body>
+
+<h2>LaServ Home</h2>
+
+<p>Welcome, and thanks for your interest in LaServ.  LaServ is an IRC bot running a custom Python
+ framework that I have designed for command-line interface to the StackExchange API.  It is currently
+ pointed at the <a href="http://gaming.stackexchange.com">Gaming.SE</a> site.  You can find it
+ on <a href="irc://irc.gamesurge.net">irc.gamesurge.net</a> in channel "#laserv".</p>
+ 
+ <p>This program is still in beta, and features may be added or removed as needed.  Please
+ feel free to report bugs and suggest features on the relevant StackApps page.</p>
+ 
+<h3>Features</h3>
+ 
+<p>In addition to reading the latest question feed and a set of RSS feeds and posting them to the channel,
+the following commands are supported:</p>
+
+<ul>
+<li>finduser (name) - search the user database for the given partial name.</li>
+<li>rep - Read your current reputation and other information from your profile (via private message, user account and access token required, see below)</li>
+<li>inbox - Read any unread items from your inbox (via private message, user account and access token with inbox support required, see below)</li>
+
+</ul>
+
+<h3>Accounts & Access Token</h3>
+
+<p>If you'd like to play with the commands that use the authentication API, you'll need to 
+create an account, log in, and set an access token.</p>
+
+<p>To create an account, send the following command to the bot:</P>
+
+<pre>/msg LaServ adduser (username) (password)</pre>
+
+<p>Although passwords are hashed using SHA256 before storage, <b>I strongly suggest using a garbage password,</b> 
+(ie, not your StackExchange/Google/Bank password) since
+this is still in debug mode and there's a chance it will be leaked to the console or mistakenly stored in 
+some insecure way.</p>
+
+<p>You can then log in with:</p>
+<pre>/msg LaServ login (username) (password)</pre>
+<p>The bot will automatically log you out when you part the channel or quit,
+ so you will need to log back in if you want to use the account/access token features.</p>
+
+<p>Once you have an account, you can add an access token.  
+To generate an access token, use the form below.  You will be redirected back to this
+page when the token is ready.  Once you have your token, send it to the bot with:
+
+<pre>/msg LaServ settoken (token)</pre>
+
+<p>If you'd like to revoke the bot's access, just send any random string as the token,
+ and the bot will lose the ability to identify you.</p>
+
+<p>Your access token is: <input id=token type=text size=30 value="(None Generated)"></p>
+
+<p>If you wish to use the commands that reference your inbox, you'll have to give the bot
+permission to do so.  Access tokens expire after a time, and you'll have to get a new one.  
+If you'd rather not have to go through this, check the box to get one that doesn't expire.  </p>
+
+<p>
+<input type=checkbox id=inbox> I want the bot to be able to read my inbox for me.<br>
+<input type=checkbox id=noexpire> I don't want the token to expire.<br>
+<a id=gettoken href="#">Request new token</a>
+</p>
+
+</body>
+</html>

@@ -1,0 +1,186 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+
+<head>
+
+<title>StackExchange ChatterBox</title>
+
+<style type="text/css">
+
+	.shadowbox {
+	  -moz-box-shadow:    3px 3px 5px 6px #ccc;
+	  -webkit-box-shadow: 3px 3px 5px 6px #ccc;
+	  box-shadow:         3px 3px 5px 6px #ccc;
+	  background-color: #eee;
+	  padding:15px;
+	}
+
+	body{ font: 90% "Trebuchet MS", sans-serif; margin: 20px;}
+
+	td{padding:5px;}
+
+	tr{border: 1px solid black;}
+
+	table {border-collapse:collapse;}
+
+</style>
+<link type="text/css" href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.16/themes/cupertino/jquery-ui.css" rel="Stylesheet" />	
+
+<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.6.4/jquery.min.js"></script>
+<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.16/jquery-ui.min.js"></script>
+
+<script type="text/javascript" src="../js/common.js"></script>
+
+<script type="text/javascript">
+
+
+
+
+
+function get_access_token() {
+
+	/* Code stolen from the demo */
+
+	var bits = window.location.href.split('#');
+
+	var fragment = bits[1];
+
+
+
+	if (!fragment){
+
+		return null;
+
+	}
+
+
+
+	// parse fragment into k=v pairs
+
+	var obj = {};
+
+	var pairs = fragment.split('&');
+
+	for (var i=0; i<pairs.length; i++){
+
+		var pair = pairs[i].split('=');
+
+		var k = decodeURIComponent(pair[0]);
+
+		var v = decodeURIComponent(pair[1]);
+
+		obj[k] = v;
+
+	}
+
+	
+
+	if (obj.access_token){
+
+		return obj.access_token;
+
+	}
+
+	return null;
+
+	
+
+}
+
+
+
+$(document).ready(function() {
+
+	$("#gettoken").click(function() {
+
+		client_id = 76;
+
+		
+
+		redirect_url = encodeURI("http://www.withoutthesarcasm.com/stackapps/seci/");
+
+		scope = "&scope=read_inbox";
+
+
+
+		if($("#noexpire").attr("checked")) {
+
+			if(scope == "") {
+
+				scope = "&scope=no_expiry";
+
+			} else {
+
+				scope += ",no_expiry";
+
+			}
+
+		}
+
+		
+
+		url = "https://stackexchange.com/oauth/dialog?client_id="+client_id+scope+
+
+			"&redirect_uri="+redirect_url;
+
+		window.location = url;
+
+	});
+
+	access_token = get_access_token()
+
+	if(access_token) {
+
+		$("#token").val(access_token);
+
+	}
+
+});
+
+</script>
+
+</head>
+
+<body>
+
+<div class="shadowbox">
+
+
+<h2>ChatterBox Home</h2>
+
+
+
+<p>ChatterBox is a userscript that adds an inbox checker to the StackExchange Chat interface.</p>
+
+
+<p><a _target="blank" href="chatterbox.user.js">Install ChatterBox now!</a></p>
+
+
+
+
+<p>ChatterBox requires userscript support, which means you'll need 
+<a href="https://addons.mozilla.org/en-US/firefox/addon/greasemonkey/">GreaseMonkey</a> on Firefox.  
+It is supported natively in Chrome, and is untested on Opera.
+
+ 
+ <p>Your access token is: <input id=token type=text size=30 value="(None Generated)"></p>
+<p>
+<input type=checkbox id=noexpire> I don't want the token to expire.  <a id=gettoken href="#">Request new token</a>
+
+</p>
+
+<p>Once you've requested a token, press the "Inbox" and then the "Config" button in chat, and copy and paste your token 
+into the "Access Token" blank and hit "Save."  Press the "Inbox" button and you should see your inbox items.
+Normally, tokens expire after 24 hours, but you can request one that does not expire by checking the 
+"I don't want the token to expire" button above.  </p>
+
+<p>If you decide you don't want to use this anymore, you can delete the access token from the
+configuration and hit save to clear it out.</p>
+
+<div id="pagefooter"></div>
+
+</div>
+
+</body>
+
+</html>

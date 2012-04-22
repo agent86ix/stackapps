@@ -1,0 +1,1083 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<title>StatsExchange</title>
+
+<link type="text/css" href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.16/themes/cupertino/jquery-ui.css" rel="Stylesheet" />	
+<link type="text/css" href="../js/blue/style.css" rel="Stylesheet" />
+
+<style type="text/css">
+
+	body{ font: 90% "Trebuchet MS", sans-serif; margin: 20px;}
+	
+	.post-score { 
+		padding: 3px 3px 3px 2px;
+		height: 15px;
+		line-height: 1.3;
+		margin-right: 10px;
+		text-align: center;
+		min-width: 20px;
+	}
+	.post-title {
+		width:600px;
+	}
+	.progress-bar {
+		width: 300px;
+		height:15px;
+		padding: 5px;
+	}
+	
+	.shadowbox {
+	  -moz-box-shadow:    3px 3px 5px 6px #ccc;
+	  -webkit-box-shadow: 3px 3px 5px 6px #ccc;
+	  box-shadow:         3px 3px 5px 6px #ccc;
+	  background-color: #eee;
+	  padding:15px;
+	}
+	
+	.tag {
+		font-size: .9em;
+		padding: 3px 4px;
+		margin: 5px;
+		border-width: 0px 1px 1px 0px;
+		background-color: white;
+		color: #666;
+		border-color: #666;
+		border-style: solid;
+		cursor: auto;
+		text-decoration: none;
+		line-height: 180%;
+	}
+	
+	.small-button { font-size:12px; }
+	
+	.accepted { background-color: green; color:white; }
+
+	
+</style>
+<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
+<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.16/jquery-ui.min.js"></script>
+<script type="text/javascript" src="../js/api.js"></script>
+<script type="text/javascript" src="../js/common.js"></script>
+<script type="text/javascript" src="../js/sitelist.js"></script>
+<script type="text/javascript" src="../js/jquery.cookies.min.js"></script>
+<script type="text/javascript" language="javascript">
+var api = StackExchangeAPI;
+api.default_backoff = 200;
+var user_site = "stackoverflow";
+var user_id = 0;
+
+function format_number(nStr)
+{
+  if((typeof nStr == 'number') && (nStr % 1 != 0)) nStr = nStr.toFixed(2);
+  nStr += '';
+  x = nStr.split('.');
+  x1 = x[0];
+  x2 = x.length > 1 ? '.' + x[1] : '';
+  var rgx = /(\d+)(\d{3})/;
+  while (rgx.test(x1)) {
+    x1 = x1.replace(rgx, '$1' + ',' + '$2');
+  }
+  return x1 + x2;
+}
+
+function parse_tags(input) {
+	var parts = input.match(/([a-zA-Z0-9+#.-]+)/g);
+	return parts;
+}
+
+function parse_ids(input) {
+	var parts = input.match(/(\d+)/g);
+	return parts;
+}
+
+/* Adapted from: http://stackoverflow.com/a/2587398 */
+function parse_date(input) {
+  var parts = input.match(/(\d+)/g);
+  if(!parts || parts.length != 3) return null;
+  // new Date(year, month [, date [, hours[, minutes[, seconds[, ms]]]]])
+  return new Date(parts[0], parts[1]-1, parts[2]); // months are 0-based
+}
+
+function on_auth_fail() {
+	console.log("auth failed");
+}
+
+function on_error() {
+	console.log("error occurred");
+}
+
+function QuestionStats() {
+	this.question_count = 0;
+	this.question_up_vote_count = 0;
+	this.question_down_vote_count = 0;
+	this.answer_count = 0;
+	this.accepted_count = 0;
+	this.answered_count = 0;
+	this.answer_up_vote_count = 0;
+	this.answer_down_vote_count = 0;
+	this.view_count = 0;
+	this.status = "No Data";
+	this.pagenum = 1;
+	this.question_id_dict = {};
+	this.abort = 0;
+	this.final_page = 0;
+};
+
+var question_filter_list = [];
+var question_stats_dict = {};
+var data_dict = {};
+var answer_data_dict = {};
+
+function write_output(question_filter, question_stats) {
+	var avg_divisor = question_stats.question_count;
+	if(avg_divisor == 0) {
+		avg_divisor = 1;
+	}
+	var output = '<td>'+question_filter.title+'</td>'
+		+'<td>'+format_number(question_stats.question_count)+'</td>'
+		+'<td>'+format_number(question_stats.question_up_vote_count)+' (' 
+			+format_number(question_stats.question_up_vote_count*1.0/avg_divisor)+')</td>'
+		+'<td>'+format_number(question_stats.question_down_vote_count)+' ('
+			+format_number(question_stats.question_down_vote_count*1.0/avg_divisor)+')</td>'
+		+'<td>'+format_number(question_stats.view_count)+' ('
+			+format_number(question_stats.view_count*1.0/avg_divisor)+')</td>'
+		+'<td>'+format_number(question_stats.answer_count)+' ('
+			+format_number(question_stats.answer_count*1.0/avg_divisor)+')</td>'
+		+'<td>'+format_number(question_stats.accepted_count)+' ('
+			+format_number(question_stats.accepted_count*1.0/avg_divisor)+')</td>'
+		+'<td>'+format_number(question_stats.answered_count)+' ('
+			+format_number(question_stats.answered_count*1.0/avg_divisor)+')</td>'
+		+'<td>'+format_number(question_stats.answer_up_vote_count)+' ('
+			+format_number(question_stats.answer_up_vote_count*1.0/avg_divisor)+')</td>'
+		+'<td>'+format_number(question_stats.answer_down_vote_count)+' ('
+			+format_number(question_stats.answer_down_vote_count*1.0/avg_divisor)+')</td>'
+		+'<td id="f_status_'+question_filter.filter_id+'">'+question_stats.status+'</td>'
+		+'<td><a href="#" class="f_refresh small-button" id="f_refresh_'+question_filter.filter_id+'" filter_id="'+question_filter.filter_id+'">Refresh</a>  '
+		+'<a href="#" class="f_data small-button" id="f_data_'+question_filter.filter_id+'" filter_id="'+question_filter.filter_id+'">Data</a>  '
+		+'<a href="#" style="display:none" class="f_abort small-button" id="f_abort_'+question_filter.filter_id+'" filter_id="'+question_filter.filter_id+'">Abort</a>  '
+		+'<a href="#" class="f_remove small-button" id="f_remove_'+question_filter.filter_id+'" filter_id="'+question_filter.filter_id+'">Remove</a>  '
+		+'<a href="#" class="f_edit small-button" id="f_edit_'+question_filter.filter_id+'" filter_id="'+question_filter.filter_id+'">Edit</a></td>';
+	
+	var row_obj = $("#result_row_"+question_filter.filter_id);
+	if(row_obj.length == 0) {
+		$("#result_body").append('<tr id="result_row_'+question_filter.filter_id+'">'+output+'</tr>');
+		
+	} else {
+		row_obj.html(output);
+	}
+	
+	$("#f_refresh_"+question_filter.filter_id).button();
+	$("#f_data_"+question_filter.filter_id).button();
+	$("#f_abort_"+question_filter.filter_id).button();
+	$("#f_remove_"+question_filter.filter_id).button();
+	$("#f_edit_"+question_filter.filter_id).button();
+	
+}
+
+
+function on_question_list_success(question_filter, question_stats, json) {
+
+	if(question_stats.abort) {
+		$("#f_status_"+question_filter.filter_id).html("Aborted.");
+		$("#f_edit_"+question_filter.filter_id).show();
+		$("#f_remove_"+question_filter.filter_id).show();
+		$("#f_refresh_"+question_filter.filter_id).show();
+		$("#f_data_"+question_filter.filter_id).show();
+		$("#f_abort_"+question_filter.filter_id).hide();
+		return;	
+	}
+
+	if(!('items' in json)) {
+		$("#f_status_"+question_filter.filter_id).html("Error :(");
+		$("#f_edit_"+question_filter.filter_id).show();
+		$("#f_remove_"+question_filter.filter_id).show();
+		$("#f_refresh_"+question_filter.filter_id).show();
+		$("#f_data_"+question_filter.filter_id).show();
+		$("#f_abort_"+question_filter.filter_id).hide();
+		return;
+	}
+	
+	var filter_tags = [];
+	if(question_filter.user_filter != 'all') {
+		/* Can't tag filter and user filter, so do tag filtering here */
+		if('tagged' in question_filter.args) {
+			filter_tags = (question_filter.args.tagged).split(";");
+		}
+	}
+	
+
+	if(!(question_filter.filter_id in data_dict)) {
+		data_dict[question_filter.filter_id] = [];
+	}
+	var cur_data = data_dict[question_filter.filter_id];
+	
+
+	
+	for(var item_id in json.items) {
+		var item = json.items[item_id];
+
+		if(filter_tags.length != 0) {
+			
+			var reject = 0;
+			if(!('tags' in item)) continue;
+			for(var i in filter_tags) {
+				if($.inArray(filter_tags[i], item.tags) < 0) {
+					reject = 1;
+					break;
+				}
+			}
+			
+			if(reject) continue;
+		}
+		
+
+		
+		
+		var question_data_item = [item.question_id, item.creation_date, 
+			item.tags.join("|"), item.score, item.up_vote_count, item.down_vote_count,
+			item.view_count, item.owner.user_id, item.owner.reputation];
+		
+		question_stats.question_count++;
+		if('view_count' in item) {
+			question_stats.view_count += item.view_count;
+		}
+
+		if('up_vote_count' in item)
+			question_stats.question_up_vote_count += item.up_vote_count;
+		
+		if('down_vote_count' in item)
+			question_stats.question_down_vote_count += item.down_vote_count;
+			
+		if('answer_count' in item) 
+			question_stats.answer_count += item.answer_count;
+		
+		if('answers' in item) {
+			var is_answered = 0;
+			for(var answer_id in item.answers) {
+				var answer = item.answers[answer_id];
+				if('up_vote_count' in answer)
+					question_stats.answer_up_vote_count += answer.up_vote_count;
+				if('down_vote_count' in answer)
+					question_stats.answer_down_vote_count += answer.down_vote_count;
+				if('is_accepted' in answer && answer['is_accepted']) {
+					question_stats.accepted_count += 1;
+					if(!is_answered) {
+						question_stats.answered_count += 1;
+						is_answered = 1;
+					}
+				}
+				if('score' in answer && answer['score']>0 && !is_answered) {
+					is_answered = 1;
+					question_stats.answered_count += 1;
+				}
+				var answer_data_item = [answer.answer_id, answer.creation_date,
+					answer.score, answer.up_vote_count, answer.down_vote_count,
+					answer.is_accepted, answer.owner.user_id, answer.owner.reputation];
+				cur_data.push(question_data_item.concat(answer_data_item));
+		
+			}
+		} else {
+			var answer_data_item = [0,0,0,0,0,0,0,0];
+			cur_data.push(question_data_item.concat(answer_data_item));
+		}
+
+	}
+	
+	
+	if(json.has_more) {
+		$("#f_status_"+question_filter.filter_id).html("Fetching: "+question_stats.pagenum*100);
+		question_stats.pagenum += 1;
+		fetch_output(question_filter, question_stats);
+	} else {
+		question_stats.status = "Complete";
+		write_output(question_filter, question_stats);
+	}
+}
+
+function on_answer_question_list_success(question_filter, question_stats, json) {
+	if(question_stats.abort) {
+		$("#f_status_"+question_filter.filter_id).html("Aborted.");
+		$("#f_edit_"+question_filter.filter_id).show();
+		$("#f_remove_"+question_filter.filter_id).show();
+		$("#f_refresh_"+question_filter.filter_id).show();
+		$("#f_data_"+question_filter.filter_id).show();
+		$("#f_abort_"+question_filter.filter_id).hide();		
+		return;	
+	}
+	if(!('items' in json)) {
+		$("#f_status_"+question_filter.filter_id).html("Error :(");
+		$("#f_refresh_"+question_filter.filter_id).show();
+		$("#f_edit_"+question_filter.filter_id).show();
+		$("#f_remove_"+question_filter.filter_id).show();
+		$("#f_data_"+question_filter.filter_id).show();
+		$("#f_abort_"+question_filter.filter_id).hide();
+		return;
+	}
+	
+	var filter_tags = [];
+	if(question_filter.user_filter != 'all') {
+		if('tagged' in question_filter.args) {
+			filter_tags = (question_filter.args.tagged).split(";");
+		}
+	}
+	
+	if(!(question_filter.filter_id in data_dict)) {
+		data_dict[question_filter.filter_id] = [];
+	} 
+	var cur_data_dict = data_dict[question_filter.filter_id];
+	
+	
+	if(!(question_filter.filter_id in answer_data_dict)) {
+		answer_data_dict[question_filter.filter_id] = {};
+	}
+	var cur_ans_data_dict = answer_data_dict[question_filter.filter_id];
+	
+	for(var item_id in json.items) {
+		var item = json.items[item_id];
+		
+		if(!(item.question_id in question_stats.question_id_dict)) {
+			continue;
+		}
+		
+		var answer_dict = question_stats.question_id_dict[item.question_id];
+
+		if(filter_tags.length != 0) {
+			
+			var reject = 0;
+			if(!('tags' in item)) continue;
+			for(var i in filter_tags) {
+				if($.inArray(filter_tags[i], item.tags) < 0) {
+					reject = 1;
+					break;
+				}
+			}
+			
+			if(reject) continue;
+		}
+		
+		var question_data_item = [item.question_id, item.creation_date, 
+			item.tags.join("|"), item.score, item.up_vote_count, item.down_vote_count,
+			item.view_count, item.owner.user_id, item.owner.reputation];
+		if(item.question_id in cur_ans_data_dict) {
+			for(var i in cur_ans_data_dict[item.question_id]) {
+				var answer_data_item = cur_ans_data_dict[item.question_id][i];
+				cur_data_dict.push(question_data_item.concat(answer_data_item));
+			}
+		}
+		
+		question_stats.question_count++;
+		if('view_count' in item) 
+			question_stats.view_count += item.view_count;
+
+		if('up_vote_count' in item)
+			question_stats.question_up_vote_count += item.up_vote_count;
+		
+		if('down_vote_count' in item)
+			question_stats.question_down_vote_count += item.down_vote_count;
+			
+		question_stats.answer_up_vote_count += answer_dict.up_vote_count;
+		question_stats.answer_down_vote_count += answer_dict.down_vote_count;
+		question_stats.answered_count += answer_dict.is_answered;
+		question_stats.accepted_count += answer_dict.accepted_count;
+		question_stats.answer_count += answer_dict.answer_count;
+	}
+	
+	if(question_stats.final_page == 1) {
+		question_stats.status = "Complete";
+		write_output(question_filter, question_stats);
+	}
+}
+
+function on_answer_list_success(question_filter, question_stats, json) {
+	var question_id_list = [];
+
+	if(question_stats.abort) {
+		$("#f_status_"+question_filter.filter_id).html("Aborted.");
+		$("#f_refresh_"+question_filter.filter_id).show();
+		$("#f_edit_"+question_filter.filter_id).show();
+		$("#f_remove_"+question_filter.filter_id).show();
+		$("#f_data_"+question_filter.filter_id).show();
+		$("#f_abort_"+question_filter.filter_id).hide();
+		return;	
+	}
+
+	if(!('items' in json)) {
+		$("#f_status_"+question_filter.filter_id).html("Error :(");
+		$("#f_refresh_"+question_filter.filter_id).show();
+		$("#f_edit_"+question_filter.filter_id).show();
+		$("#f_remove_"+question_filter.filter_id).show();
+		$("#f_data_"+question_filter.filter_id).show();
+		$("#f_abort_"+question_filter.filter_id).hide();
+		return;
+	}
+	
+	
+	if(!(question_filter.filter_id in answer_data_dict)) {
+		answer_data_dict[question_filter.filter_id] = {};
+	}
+	var cur_data_dict = answer_data_dict[question_filter.filter_id];
+	
+	
+	for(var item_id in json.items) {
+		var item = json.items[item_id];
+		if(!(item.question_id in question_stats.question_id_dict)) {
+			question_id_list.push(item.question_id);
+			question_stats.question_id_dict[item.question_id] = {
+				up_vote_count: 0,
+				down_vote_count: 0,
+				is_answered: 0,
+				accepted_count: 0,
+				answer_count: 0
+			};
+		}
+		
+		
+		var answer_data_item = [item.answer_id, item.creation_date,
+				item.score, item.up_vote_count, item.down_vote_count,
+				item.is_accepted, item.owner.user_id, item.owner.reputation];
+		if(item.question_id in cur_data_dict) {
+			cur_data_dict[item.question_id].push(answer_data_item);
+		} else {
+			cur_data_dict[item.question_id] = [answer_data_item];
+		}
+		
+		var answer_dict = question_stats.question_id_dict[item.question_id];
+		
+		answer_dict.answer_count++;
+		
+		if('up_vote_count' in item)
+			answer_dict.up_vote_count += item.up_vote_count;
+		if('down_vote_count' in item)
+			answer_dict.down_vote_count += item.down_vote_count;
+		if('is_accepted' in item && item['is_accepted']) {
+			answer_dict.is_answered = 1;
+			answer_dict.accepted_count = 1;
+		}
+		if('score' in item && item['score'] > 0 && !answer_dict.is_answered) {
+			answer_dict.is_answered = 1;
+		}
+		
+	}
+
+
+	
+	if(json.has_more) {
+		$("#f_status_"+question_filter.filter_id).html("Fetching: "+question_stats.pagenum*100);
+		question_stats.pagenum += 1;
+		fetch_output(question_filter, question_stats);		
+	} else {
+		question_stats.final_page = 1;
+	}
+	
+	if(question_id_list.length) {
+		var question_ids = question_id_list.join(';');
+		var args = $.extend({site:user_site,  pagesize: 100, order:'desc',
+			sort:'votes', filter: '!Ohw2Y3SaByDEP.MwR4LADUrZcaa0hGs69W6RAv0r7G)' }, question_filter.args);
+		api.call("/questions/"+question_ids, args, 
+			function(json) { on_answer_question_list_success(question_filter, question_stats, json); },
+			on_error);
+	} else if(question_stats.final_page == 1) {
+		question_stats.status = "Complete";
+		write_output(question_filter, question_stats);
+	}
+	
+}
+
+function fetch_output(question_filter, question_stats) {
+	var common_args = {site:user_site,  pagesize: 100, order:'desc',
+		sort:'votes' };
+	var args = $.extend({page: question_stats.pagenum}, common_args, question_filter.args);
+	
+	if(question_filter.type == 'questions') {
+		if(question_filter.user_filter == 'all') {
+			args.filter = '!Ohw2Y3SaByDEP.MwR4LADUrZcaa0hGs69W6RAv0r7G)';
+			api.call("/questions/", args,
+				function(json) { on_question_list_success(question_filter, question_stats, json); },
+				on_error);	
+		} else if(question_filter.user_filter == 'me') {
+			args.filter = "!Ohw2Y3SaByDEP.MwR4LADUrZcaa0hGs69W6RAv0r7G)";
+			api.call("/users/"+user_id+"/questions/", args,
+				function(json) { on_question_list_success(question_filter, question_stats, json); },
+				on_error);
+		} else if(question_filter.user_filter == 'by_id') {
+			args.filter = "!Ohw2Y3SaByDEP.MwR4LADUrZcaa0hGs69W6RAv0r7G)";
+			api.call("/users/"+question_filter.user_ids+"/questions/", args,
+				function(json) { on_question_list_success(question_filter, question_stats, json); }, 
+				on_error);
+		}
+	} else if(question_filter.type == 'answers') {
+		if(question_filter.user_filter == 'all') {
+			args.filter = '!2-_DslzCYT.D)J7XJtRD8';
+			api.call("/answers/", args,
+				function(json) { on_answer_list_success(question_filter, question_stats, json); },
+				on_error);	
+		} else if(question_filter.user_filter == 'me') {
+			args.filter = '!2-_DslzCYT.D)J7XJtRD8';
+			api.call("/users/"+user_id+"/answers/", args,
+				function(json) { on_answer_list_success(question_filter, question_stats, json); },
+				on_error);	
+		} else if(question_filter.user_filter == 'by_id') {
+			args.filter = '!2-_DslzCYT.D)J7XJtRD8';
+			api.call("/users/"+question_filter.user_ids+"/answers/", args,
+				function(json) { on_answer_list_success(question_filter, question_stats, json); },
+				on_error);	
+		}
+	}
+}
+
+function store_filter_list() {
+	var stored_filter_list = [];
+	
+	for(var i in question_filter_list) {
+		if(question_filter_list[i] != undefined) {
+			stored_filter_list.push(question_filter_list[i]);
+		}
+	}
+	
+	try {
+		localStorage['question_filter_list'] = JSON.stringify(stored_filter_list);
+	} catch(err) {}
+}
+
+function load_filter_list() {
+	var stored_filter_list = []
+	try {
+		
+		stored_filter_list = JSON.parse(localStorage['question_filter_list']);
+		if(stored_filter_list == null) return;
+	} catch (err) {
+		return;
+	}
+	
+	for(var i in stored_filter_list) {
+		stored_filter_list[i].filter_id = i;
+	}
+	question_filter_list = stored_filter_list;
+	
+}
+
+function save_filter(filter_id) {
+	var question_filter = {args:{}, 
+		type:$('input[name=f_type]:checked').val(),
+		title:$('#f_title').val(), 
+		user_filter:$('input[name=f_user]:checked').val(),
+		user_ids:''
+	};
+		
+	var tags = parse_tags($("#f_tags").val());
+	if(tags && tags.length != 0) {
+		question_filter.args['tagged'] = tags.join(";");
+	}
+	
+	var user_ids = parse_ids($("#f_user_ids").val());
+	if(user_ids && user_ids.length != 0) {
+		question_filter.user_ids = user_ids.join(";");
+	}
+	
+	
+	var fromdate = parse_date($("#f_start_date").val());
+	if(fromdate != null && fromdate != undefined) {
+		question_filter.args['fromdate'] = (fromdate.getTime()/1000).toFixed(0);
+	}
+
+	var todate = parse_date($("#f_end_date").val());
+	if(todate != null && todate != undefined) {
+		question_filter.args['todate'] = (todate.getTime()/1000).toFixed(0);
+	}
+	
+	try {
+		var value = $("#f_min_score").val();
+		value = parseInt(value);
+		if(!isNaN(value)) {
+			question_filter.args['min'] = value;
+		}
+	} catch (err) {}
+	
+	try {
+		var value = $("#f_max_score").val();
+		value = parseInt(value);
+		if(!isNaN(value)) {
+			question_filter.args['max'] = value;
+		}
+	} catch (err) {}	
+	
+	if(filter_id < 0) {
+		filter_id = question_filter_list.length;
+		question_filter_list.push(question_filter);
+	} else {
+		question_filter_list[filter_id] = question_filter;
+	}
+	
+	question_filter.filter_id = filter_id;
+	store_filter_list();
+
+	return question_filter;
+	
+	//fromdate f_start_date var cur_date = parse_date($("#datepicker").val());
+	//todate f_end_date
+	//min f_min_score
+	//max f_max_score
+}
+
+function load_filter(filter_id) {
+	var question_filter = question_filter_list[filter_id];
+	if(!question_filter) return;
+	
+	$('#f_title').val(question_filter.title)
+	
+	var tags = "";
+	if('tagged' in question_filter.args) {
+		tags = question_filter.args.tagged;
+		
+	}
+	$("#f_tags").val(tags);
+
+	var fromdate = "";
+	if('fromdate' in question_filter.args) {
+		var date_obj = new Date(question_filter.args.fromdate*1000);
+		fromdate = date_obj.getFullYear() + '/' + (date_obj.getMonth()+1) + '/'+ date_obj.getDate();
+		
+	}
+	$("#f_start_date").val(fromdate);
+	
+	
+	var todate = "";
+	if('todate' in question_filter.args) {
+		var date_obj = new Date(question_filter.args.todate*1000);
+		todate = date_obj.getFullYear() + '/' + (date_obj.getMonth()+1) + '/'+ date_obj.getDate();
+		
+	}
+	$("#f_end_date").val(todate);
+	
+	
+	var min_score = "";
+	if('min' in question_filter.args) {
+		min_score = question_filter.args.min;
+		
+	}
+	$("#f_min_score").val(min_score);
+	
+	
+	var max_score = "";
+	if('max' in question_filter.args) {
+		max_score = question_filter.args.max;
+		
+	}
+	$("#f_max_score").val(max_score);
+
+	
+	var user_ids = "";
+	if('user_ids' in question_filter) {
+		user_ids = question_filter.user_ids;
+	}
+	$("#f_user_ids").val(user_ids);
+
+	$('input[name=f_user]').filter
+		("[value="+question_filter.user_filter+"]").
+			prop('checked', true);
+
+	$('input[name=f_type]').filter
+		("[value="+question_filter.type+"]").
+			prop('checked', true);
+
+}
+
+function remove_filter(filter_id) {
+	delete question_filter_list[filter_id];
+	$("#result_row_"+filter_id).remove();
+	store_filter_list();
+	
+}
+
+
+/* Write the filters to the textarea */
+function do_filter_export() {
+	
+	output_list = [];
+	
+	for(var i in question_filter_list) {
+		var filter = question_filter_list[i];
+		if(filter == undefined || filter == null) continue;
+		var output_filter = $.extend({}, filter);
+		delete output_filter.filter_id;
+		output_list.push("# "+output_filter.title+":\n"+JSON.stringify(output_filter));
+		
+	}
+	$("#f_export_text").val(output_list.join("\n\n"));
+}
+
+function do_filter_import() {
+	var import_data = $("#f_export_text").val();
+	var new_filter_list = [];
+	var import_data_list = import_data.split("\n");
+	var filter_id = 0;
+	for(var i in import_data_list) {
+		var cur_data = $.trim(import_data_list[i]);
+		if(!(cur_data.length)) continue;
+		if(cur_data.charAt(0) == '#') continue;
+		try {
+			var cur_filter = JSON.parse(cur_data);
+			if(cur_filter == null) return i;
+			cur_filter.filter_id = filter_id;
+			filter_id++;
+			new_filter_list.push(cur_filter);
+		} catch(err) { return i; }
+		
+	}
+	question_filter_list = new_filter_list;
+	store_filter_list();
+	return -1;
+}
+
+function on_auth_success(json) {
+	q_pagenum = a_pagenum = 1;
+	answer_count = question_count = 0;
+	question_view_count = 0;
+	
+	if(!('items' in json) || json.items.length == 0) {
+		$("#account").html('<span style="color:red">You don\'t have an account on this site!</span>');
+		return;
+	} else {
+		var user = json.items[0];
+		user_id = user['user_id'];
+		$("#account").html('<a target="_blank" href="'+stackexchange_site_array[user_site].site_url+'/users/'+user_id+'">'+
+			user['display_name'] + "</a>");
+	
+	}
+	
+}
+
+function on_auth_fail(request, status, error) {
+	$("#account").html('<span style="color:red">Your access token is invalid or has been revoked!  Try getting a new one with the "Reset Access Token" button.</span>');
+	user_id = -1;
+}
+
+function reset_output() {
+	$("#result_body").html("");
+	for(var i in question_filter_list) {
+		var question_stats = new QuestionStats();
+		question_stats_dict[i] = question_stats;
+		write_output(question_filter_list[i], question_stats);
+		data_dict[i] = [];
+		answer_data_dict[i] = {};
+	}
+}
+
+function dump_data(filter_id) {
+	if(!(filter_id in data_dict)) return;
+	output_list = [
+		"question_id, question_creation_date, tags, question_score, "+
+		"question_up_vote_count, question_down_vote_count, view_count, question_user_id, "+
+		"question_user_rep,answer_id,answer_creation_date, answer_score, answer_up_vote_count, "+
+		"answer_down_vote_count, is_accepted, answer_user_id, answer_user_rep"
+	];
+	
+	for(var i in data_dict[filter_id]) {
+		output_list.push(data_dict[filter_id][i].join(","));
+	}
+	$("#f_data_output").val(output_list.join("\n"));
+}
+
+$(document).ready(function() {
+	var client_id = 134;
+	var args = {key:encodeURI('O06qFlD4lLBsvVcHfETYHQ((')};
+	
+	try {
+		var stored_user_site = $.cookies.get('badges_user_site');
+		if(stored_user_site != null) user_site = stored_user_site;
+		
+	} catch (err) { }
+	
+	load_filter_list();
+	
+	api.init(client_id, args);
+	
+	api.auth(user_site, on_auth_success, on_auth_fail);
+	
+	$("#refresh").click(function (e) {
+		api.abort_queue();
+		reset_output();
+		api.auth(user_site, on_auth_success, on_auth_fail);
+		e.preventDefault();
+	}).button();
+
+	$("#token_reset").click(function (e) {
+		api.abort_queue();
+		api.reset_access_token(client_id);
+		e.preventDefault();
+	}).button();
+	
+
+	
+	$("#siteselect").html(api.build_site_select(stackexchange_site_array));
+	
+	$("#siteselect").val(user_site);
+	$("#siteselect").change(function (e) {
+		user_site = $("#siteselect").val();
+		$.cookies.set('badges_user_site', $("#siteselect").val());
+		$("#f_abortall").click();
+		api.abort_queue();
+		reset_output();
+		api.auth(user_site, on_auth_success, on_auth_fail);
+	});
+	
+	$("#f_edit_dialog").dialog({modal:true, autoOpen: false, width:600,
+		title:"Edit/Add New"});
+	
+	
+	/* Move the edit dialog to the 'add new' state */
+	$("#f_addnew").click(function (e) {
+		$("#f_save").attr("filter_id", -1);
+		$("#f_edit_dialog").dialog({title:"Add new filter"});
+		$("#f_edit_dialog").dialog('open');
+		e.preventDefault();
+	}).button();
+	
+	/* Save the actively edited filter */
+	$("#f_save").click(function (e) {
+		var filter_id = $(this).attr("filter_id");
+		var question_stats = new QuestionStats();
+		var question_filter = save_filter(filter_id);
+		question_stats_dict[filter_id] = question_stats;
+		write_output(question_filter, question_stats);
+		$("#f_edit_dialog").dialog('close');
+	}).button();
+	
+	/* Cancel editing & close the dialog */
+	$("#f_cancel").click(function (e) {
+		$("#f_edit_dialog").dialog('close');
+	}).button();
+	
+	$("#f_refreshall").click(function (e) {
+		for(var filter_id in question_filter_list) {
+			var question_filter = question_filter_list[filter_id];
+			if(question_filter) {
+				if($("#f_refresh_"+question_filter.filter_id).is(":visible")) {
+					$("#f_refresh_"+question_filter.filter_id).click();
+				}
+			}
+		}
+		e.preventDefault();
+	}).button();
+	
+	$("#f_abortall").click(function (e) {
+		for(var filter_id in question_filter_list) {
+			var question_filter = question_filter_list[filter_id];
+			if(question_filter) {
+				if($("#f_abort_"+question_filter.filter_id).is(":visible")) {
+					$("#f_abort_"+question_filter.filter_id).click();
+				}
+			}
+		}
+		e.preventDefault();
+	}).button();
+	
+	/* Refresh button per-query */
+	$(document).on("click", ".f_refresh", function (e) {
+		var filter_id = $(this).attr("filter_id");
+		var question_stats = new QuestionStats();
+		var question_filter = question_filter_list[filter_id];
+		
+		data_dict[filter_id] = [];
+		answer_data_dict[filter_id] = {};
+		
+		question_stats_dict[filter_id] = question_stats;
+		write_output(question_filter, question_stats);
+		
+		$("#f_refresh_"+question_filter.filter_id).hide();
+		$("#f_abort_"+question_filter.filter_id).show();
+		$("#f_edit_"+question_filter.filter_id).hide();
+		$("#f_remove_"+question_filter.filter_id).hide();
+		$("#f_data_"+question_filter.filter_id).hide();
+		
+		fetch_output(question_filter, question_stats);
+		e.preventDefault();
+	});
+
+	$(document).on("click", ".f_remove", function (e) {
+		var filter_id = $(this).attr("filter_id");
+		
+		remove_filter(filter_id);
+		e.preventDefault();
+	});
+	
+	$(document).on("click", ".f_edit", function (e) {
+		var filter_id = $(this).attr("filter_id");
+		
+		$("#f_save").attr("filter_id", filter_id);
+		$("#f_edit_dialog").dialog({title:"Editing filter: "+question_filter_list[filter_id].title});
+		$("#f_edit_dialog").dialog('open');
+		
+		load_filter(filter_id);
+		e.preventDefault();
+	});
+	
+	$(document).on("click", ".f_abort", function (e) {
+		var filter_id = $(this).attr("filter_id");
+		
+		var question_stats = question_stats_dict[filter_id];
+		if(question_stats) {
+			question_stats.abort = 1;
+		}
+		
+		e.preventDefault();
+	});
+	
+	$(document).on("click", ".f_data", function(e) {
+		var filter_id = $(this).attr("filter_id");
+		
+		dump_data(filter_id);
+		$("#f_data_dialog").dialog('open');
+		e.preventDefault();
+	});
+	
+	$("#f_start_date").datepicker().datepicker("option", "dateFormat", "yy/mm/dd");
+	$("#f_end_date").datepicker().datepicker("option", "dateFormat", "yy/mm/dd");
+	
+	$("#f_export_dialog").dialog({modal:true, autoOpen: false, width:600,
+		title:"Import/Export Queries"});
+	
+	$("#f_export").click(function (e) {
+		if($("#f_export_dialog").is(":visible")) {
+			$("#f_export_cancel").click();
+		} else {
+			$("#f_export_dialog").dialog('open'); //show();
+			do_filter_export();
+		}
+		e.preventDefault();
+	}).button();
+	
+	$("#f_export_save").click(function (e) {
+		var err_line = do_filter_import();
+		if(err_line < 0) {
+			$("#f_export_dialog").dialog('close'); //hide();
+			reset_output();
+		} else {
+			err_line++;
+			alert("There was a problem parsing your filters on line "+err_line+".");
+		}
+		e.preventDefault();
+	}).button();
+	
+	$("#f_export_cancel").click(function (e) {
+		$("#f_export_dialog").dialog('close'); //.hide();
+		$("#f_export_text").val("");
+		e.preventDefault();
+	}).button();
+	
+	$("#f_data_dialog").dialog({title:"Data Export", autoOpen: false, modal:true, width:1000});
+
+	$("#f_data_close").click(function (e) {
+		$("#f_data_dialog").dialog('close');;
+	}).button();
+	
+	$("#revoke").click(function (e) {
+		reset_output();
+		api.abort_queue();
+		api.revoke_access();
+		alert("Your authorization has been revoked.");
+		e.preventDefault();
+	});
+	
+	reset_output();
+
+	
+});
+
+</script>
+</head>
+<body>
+<div class="shadowbox">
+
+<h2>StatsExchange</h2>
+
+<p>Run queries against: <select id="siteselect"></select></p>
+<p>
+Your account on this site: <span id="account">(No account information loaded yet)</span>   
+ 
+<a href="#" class="small-button" id="token_reset">Reset Access Token</a> 
+</p>
+
+
+
+<table class="tablesorter"> 
+<thead>
+<tr>
+	<th>Title</th>
+	<th>Questions</th>
+	<th>Upvotes</th>
+	<th>Downvotes</th>
+	<th>Views</th>
+	<th>Answers</th>
+	<th>Accepted</th> 
+	<th>Answered</th> 
+	<th>Upvotes</th> 
+	<th>Downvotes</th> 
+	<th>Status</th>
+	<th>Control</th>
+</tr>
+</thead>
+<tbody id="result_body">
+</tbody>
+</table>
+
+<p>
+<a href="#" class="small-button" id="f_addnew">Add New</a>   
+<a href="#" class="small-button" id="f_refreshall">Refresh All</a>
+<a href="#" class="small-button" id="f_abortall">Abort All</a>
+<a href="#" class="small-button" id="f_export">Import/Export</a>
+</p>
+
+
+<div id="f_export_dialog" style="display:none">
+<div style="font-size:12px;text-align:center">
+<textarea id="f_export_text" rows=12 cols=80 wrap="off"></textarea>
+<p>
+<a href="#" class="small-button" id="f_export_cancel">Cancel</a>
+<a href="#" class="small-button" id="f_export_save">Save</a>
+</p>
+</div>
+</div>
+
+
+<div id="f_data_dialog" style="display:none">
+<textarea id="f_data_output" rows=40 cols=90 wrap="off"></textarea>
+<p><a href="#" class="small-button" id="f_data_close">Close</a></p>
+</div>
+
+<div id="f_edit_dialog" style="display:none;max-width:550px">
+<table class="tablesorter">
+<tr><td>Title:</td><td><input type=text size=30 id="f_title"></td></tr>
+<tr><td>Search by:</td><td>
+	<input type=radio name="f_type" id="f_type_questions" value="questions" checked> Questions <br>
+	<input type=radio name="f_type" id="f_type_answers" value="answers"> Answers <br>
+</td></tr>
+<tr><td>Filter by user:</td><td>
+	<input type=radio name="f_user" id="f_user_me" value="me" checked> Me <br>
+	<input type=radio name="f_user" id="f_user_all" value="all"> Everyone <br>
+	<input type=radio name="f_user" id="f_user_by_id" value="by_id"> User IDs: <input type=text id="f_user_ids"> <br>
+</td></tr>
+<tr><td>Tags:</td><td><input type=text id="f_tags"></td></tr>
+<tr><td>Date range:</td><td>
+	<input type=text size=12 id="f_start_date"> to<br> <input type=text size=12  id="f_end_date">
+</td></tr>
+<tr><td>Score:</td>
+	<td>Min: <input type=text size=4 id="f_min_score"><br>
+	Max: <input type=text size=4 id="f_max_score"><br>
+</td></tr>
+<tr><td colspan=2 style="text-align:center"> 
+	<a href="#" class="small-button" id="f_cancel" filter_id="-1">Cancel</a>
+	<a href="#" class="small-button" id="f_save" filter_id="-1">Save</a>
+</td></tr>
+</table>
+</div>
+
+<p>This application uses an "access token" to access your account information 
+on the StackExchange network.  If you'd like, you can <a href="#" id="revoke">revoke</a> 
+this permission.</p>
+<div id="pagefooter"></div>
+
+</div>
+</body>
+</html>
