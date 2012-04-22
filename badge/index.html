@@ -236,7 +236,7 @@ function refresh_all() {
 
 	$.ajax({
 		type: "GET",
-		url: "dailyrep.php", 
+		url: "http://a86seapi.appspot.com/dailyrep", 
 		data: {site:user_site, userid:user_id},
 		success: on_rep_count_success,
 		dataType:"json",
