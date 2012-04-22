@@ -1,0 +1,632 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+ 
+<html>
+<head>
+<title>Stinking Badges!</title>
+
+<link type="text/css" href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.16/themes/cupertino/jquery-ui.css" rel="Stylesheet" />	
+<style type="text/css">
+
+	body{ font: 90% "Trebuchet MS", sans-serif; margin: 20px;}
+	td{padding:2px;}
+	table {border-collapse:collapse;}
+	.post-score { 
+		padding: 3px 3px 3px 2px;
+		height: 15px;
+		line-height: 1.3;
+		margin-right: 10px;
+		text-align: center;
+		min-width: 20px;
+	}
+	.progress-bar {
+		width: 300px;
+		height:15px;
+		padding: 5px;
+	}
+	
+	.shadowbox {
+	  -moz-box-shadow:    3px 3px 5px 6px #ccc;
+	  -webkit-box-shadow: 3px 3px 5px 6px #ccc;
+	  box-shadow:         3px 3px 5px 6px #ccc;
+	  background-color: #eee;
+	  padding:15px;
+	}
+	
+	.tag {
+		font-size: .9em;
+		padding: 3px 4px;
+		margin: 5px;
+		border-width: 0px 1px 1px 0px;
+		background-color: white;
+		color: #666;
+		border-color: #666;
+		border-style: solid;
+		cursor: auto;
+		text-decoration: none;
+		line-height: 180%;
+	}
+	
+	.small-button { font-size:12px; }
+
+	
+</style>
+<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.6.4/jquery.min.js"></script>
+<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.16/jquery-ui.min.js"></script>
+<script type="text/javascript" src="../js/api.js"></script>
+<script type="text/javascript" src="../js/common.js"></script>
+<script type="text/javascript" src="../js/sitelist.js"></script>
+<script type="text/javascript" src="../js/jquery.iecors.js"></script>
+
+<script type="text/javascript" src="../js/jquery.cookies.min.js"></script>
+<script type="text/javascript">
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-26396490-1']);
+  _gaq.push(['_trackPageview']);
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+</script>
+<script type="text/javascript" language="javascript">
+
+var user_site = "stackoverflow";
+var user_id = 0;
+
+var api_call = StackExchangeAPI.call;
+var api_reset_access_token = StackExchangeAPI.reset_access_token;
+var api_revoke_access = StackExchangeAPI.revoke_access;
+var api_abort_queue = StackExchangeAPI.abort_queue;
+var api_init = StackExchangeAPI.init;
+var api_auth = StackExchangeAPI.auth
+
+var top_tag_list = [];
+var top_tag_page = 1;
+var user_tag_list = {};
+
+function on_top_tag_success(json) {
+	if(!('items' in json)) {
+		return;
+	}
+	
+	var good_output = "";
+	var bad_output = "";
+	var site_url = stackexchange_site_array[user_site].site_url;
+	var min_score = 16;
+	
+	
+	
+	for(var item_id in json.items) {
+		var item = json.items[item_id];
+		user_tag_list[item['tag_name']] = item['answer_score'];	
+		if(item['answer_score'] < min_score) {
+			min_score = item['answer_score'];
+		}
+	}
+	
+	if(min_score >= 15 && top_tag_page < 5) {
+		top_tag_page = top_tag_page + 1;
+		api_call("/users/"+user_id+"/top-answer-tags/", 
+				{site: user_site, filter:'!n0IbH.9B9.', pagesize:50, page:top_tag_page}, 
+				on_top_tag_success);
+		return;
+	}
+	
+	var good_tag_count = 0;
+	var bad_tag_count = 0;
+	
+	for(var tag_num in top_tag_list) {
+		var tag = top_tag_list[tag_num];
+		var tag_score = "?";
+		if(tag in user_tag_list) {
+			tag_score = user_tag_list[tag];
+			
+		}
+		if(tag_score > 15) {
+			if(good_tag_count && good_tag_count%5 == 0) good_output = good_output + "</tr><tr>";
+			good_tag_count++;
+			good_output = good_output + '<td><a target="_blank" class=tag href="'+site_url+'/search?q=user:'
+				+user_id+'+['+tag+']">'+tag+"</a> ("+tag_score+")</td>";
+		} else {
+			if(bad_tag_count && bad_tag_count%5 == 0) bad_output = bad_output + "</tr><tr>";
+			bad_tag_count++;
+			bad_output = bad_output + '<td><a target="_blank" class=tag href="'+site_url+'/search?q=user:'
+				+user_id+'+['+tag+']">'+tag+"</a> ("+tag_score+")</td>";
+		}
+	}
+	
+	var output = "<p>Top tags where your answer score is above 15: "+good_tag_count+"</p>\n"+
+		"<p>Top tags above 15 votes: </p><table border=0><tr>"+good_output+"</tr></table>\n"+
+		"<p>Top tags below 15 votes: </p><table border=0><tr>"+bad_output+"</tr></table>\n";
+	
+	$("#generalist-result").html(output);
+	
+	var progress_bar_value = 0;
+	
+	if(good_tag_count > 20) {
+		progress_bar_value = 100;
+	} else {
+		progress_bar_value = good_tag_count*100/20;
+	}
+	
+	
+	$("#generalist-progress").progressbar("value", progress_bar_value);
+	
+}
+
+function on_tag_list_success(json) {
+	if(!('items' in json)) {
+		return;
+	}
+	
+	top_tag_list = [];
+	user_tag_list = {};
+	top_tag_page = 1;
+	
+	for(var item_id in json['items']) {
+		var item = json.items[item_id];
+		top_tag_list.push(item['name']);
+	}	
+	
+	api_call("/users/"+user_id+"/top-answer-tags/", 
+		{site: user_site, filter:'!n0IbH.9B9.', page:top_tag_page, pagesize:50}, 
+		on_top_tag_success);
+	
+	
+	
+}
+
+var vote_list_common_args = {pagesize:10, order:'desc', sort:'votes' };
+
+function on_vote_list_success(json, output_id) {
+	if(!('items' in json)) {
+		$('#'+output_id).html("An error occurred...");
+		return;
+	}
+	
+	output_html = "";
+	var count = 0;
+	
+	for(var item_id in json['items']) {
+		var item = json['items'][item_id];
+		var item_path = '/q/'+item['question_id'];
+		if('answer_id' in item) {
+			item_path = '/a/'+item['answer_id'];
+		}
+		count++;
+		output_html = output_html + 
+			"<span class=\"post-score\">"+item['score']+
+			'</span> <a target="_blank" href="'+stackexchange_site_array[user_site].site_url+
+			item_path+'">'+item['title']+"</a><br>\n";
+	}
+	if(count) {
+		$('#'+output_id).html(output_html);
+	} else {
+		$('#'+output_id).html("None of your posts are close to this badge :(");
+	}
+	
+}
+
+function on_rep_count_success(json) {
+	if(!('repcount' in json)) {
+		$("#legendary-progress").progressbar("value", 0);
+		$("#legendary-count").text("?");
+		return;
+	}
+	
+	var progress_bar_value = 0;
+	if(json.repcount > 150) {
+		progress_bar_value = 100;
+	} else {
+		progress_bar_value = json.repcount*100/150;
+	}
+	$("#legendary-progress").progressbar("value", progress_bar_value);
+	$("#legendary-count").text(json.repcount+ " of 150. ("+Math.floor(progress_bar_value)+"%)");
+}
+
+function on_tag_count_success(json) {
+	if('total' in json) {
+		$("#tag_count").html('<b>'+json.total+'</b');
+	}
+}
+
+
+function refresh_all() {
+
+
+	$.ajax({
+		type: "GET",
+		url: "http://a86seapi.appspot.com/dailyrep", 
+		data: {site:user_site, userid:user_id},
+		success: on_rep_count_success,
+		dataType:"json",
+	});
+	
+	api_call("tags", {site: user_site, pagesize:1, order:'desc', sort:'popular', min:200, filter:'!nA7qLnUvBf'}, on_tag_count_success, on_error);
+	
+	api_call("tags", {site: user_site, pagesize:40,order:'desc',sort:'popular'}, on_tag_list_success, on_error);
+	
+	api_call("/users/"+user_id+"/questions/", 
+		$.extend({site: user_site, min: '7', max: '9', filter:'!)qk0x1x-Z8ryVmFbK.yk'}, vote_list_common_args),
+		function (json) { on_vote_list_success(json, "question_list_bronze") });
+		
+	api_call("/users/"+user_id+"/questions/", 
+		$.extend({site: user_site, min: '20', max: '24', filter:'!)qk0x1x-Z8ryVmFbK.yk'}, vote_list_common_args),
+		function (json) { on_vote_list_success(json, "question_list_silver") });
+		
+	api_call("/users/"+user_id+"/questions/", 
+		$.extend({site: user_site, min: '90', max: '99', filter:'!)qk0x1x-Z8ryVmFbK.yk'}, vote_list_common_args),
+		function (json) { on_vote_list_success(json, "question_list_gold") });
+		
+	
+	api_call("/users/"+user_id+"/answers/", 
+		$.extend({site: user_site, min: '7', max: '9', filter:'!mRNa90ViDb'}, vote_list_common_args),
+		function (json) { on_vote_list_success(json, "answer_list_bronze") });
+		
+	api_call("/users/"+user_id+"/answers/", 
+		$.extend({site: user_site, min: '20', max: '24', filter:'!mRNa90ViDb'}, vote_list_common_args),
+		function (json) { on_vote_list_success(json, "answer_list_silver") });
+		
+	api_call("/users/"+user_id+"/answers/", 
+		$.extend({site: user_site, min: '90', max: '99', filter:'!mRNa90ViDb'}, vote_list_common_args),
+		function (json) { on_vote_list_success(json, "answer_list_gold") });
+}
+
+function reset_output() {
+	$("#account").html("(No account information loaded yet)");
+	
+	$("#tag_count").html("(unknown)");
+
+	$("#legendary-progress").progressbar("value", 0);
+	$("#legendary-count").text("?");
+	
+	$("#generalist-progress").progressbar("value", 0);
+	$("#generalist-result").html('<img src="../common/load.gif">');
+
+	$("#question_list_bronze").html('<img src="../common/load.gif">');
+	$("#question_list_silver").html('<img src="../common/load.gif">');
+	$("#question_list_gold").html('<img src="../common/load.gif">');
+	
+	$("#answer_list_bronze").html('<img src="../common/load.gif">');
+	$("#answer_list_silver").html('<img src="../common/load.gif">');
+	$("#answer_list_gold").html('<img src="../common/load.gif">');
+}
+
+function clear_output() {
+	$("#generalist-result").html('');
+
+	$("#question_list_bronze").html('');
+	$("#question_list_silver").html('');
+	$("#question_list_gold").html('');
+	
+	$("#answer_list_bronze").html('');
+	$("#answer_list_silver").html('');
+	$("#answer_list_gold").html('');
+}
+
+function on_auth_success(json) {
+	
+	if(!('items' in json) || json.items.length == 0) {
+		$("#account").html('<span style="color:red">You don\'t have an account on this site!</span>');
+		clear_output();
+		return;
+	}
+	
+	var user = json.items[0];
+	
+	user_id = user['user_id'];
+	$("#account").html('<a target="_blank" href="'+stackexchange_site_array[user_site].site_url+'/users/'+user_id+'">'+
+		user['display_name'] + "</a>");
+	//api_call("tags", {pagesize:40,order:'desc',sort:'popular'}, on_tag_list_success, on_error);
+	
+	refresh_all();
+
+	
+}
+
+function on_auth_fail(request, status, error) {
+	clear_output();
+	$("#account").html('<span style="color:red">Your access token is invalid or has been revoked!  Try getting a new one with the "Reset Access Token" button.</span>');
+	
+}
+
+function on_error(request, status, error) {
+	alert("An error has occurred!");
+}
+
+$(document).ready(function() {
+	var client_id = 74;
+	var args = {key:encodeURI('tD7YpcY3WuQGUz*f47P21g((')};
+	
+	try {
+		var stored_user_site = $.cookies.get('badges_user_site');
+		if(stored_user_site != null) user_site = stored_user_site;
+	} catch (err) {
+	
+	}
+	
+	//var cur_site = $("#siteselect").find('[value="'+user_site+'"]');
+	$("#siteselect").val(user_site);
+	$("#siteselect").change(function (e) {
+		user_site = $("#siteselect").val();
+		$.cookies.set('badges_user_site', $("#siteselect").val());
+		
+		api_abort_queue();
+		reset_output();
+		api_auth(user_site, on_auth_success, on_auth_fail);
+	});
+	
+	$("#legendary-progress").progressbar();
+	$("#generalist-progress").progressbar();
+	
+	$("#refresh").click(function (e) {
+		api_abort_queue();
+		reset_output();
+		api_auth(user_site, on_auth_success, on_auth_fail);
+		e.preventDefault();
+	}).button();
+
+	$("#token_reset").click(function (e) {
+		api_abort_queue();
+		api_reset_access_token(client_id);
+		e.preventDefault();
+	}).button();
+
+	$("#revoke").click(function (e) {
+		clear_output();
+		api_abort_queue();
+		api_revoke_access();
+		alert("Your authorization has been revoked.");
+		e.preventDefault();
+	});
+
+	
+	api_init(client_id, args);
+	
+	api_auth(user_site, on_auth_success, on_auth_fail);
+	
+	
+});
+</script>
+
+</head>
+<body>
+<div class="shadowbox">
+<h1>StinkingBadges</h1>
+
+<i>Badges?  We don't need no <a href="http://www.youtube.com/watch?v=TFwprS_L6tg">stinking badges!</a></i>
+
+<p>Check my progress on: <select id="siteselect">
+<option value="stackoverflow">Stack Overflow</option>
+<option value="serverfault">Server Fault</option>
+<option value="superuser">Super User</option>
+<option value="meta.stackoverflow">Meta Stack Overflow</option>
+<option value="webapps">Web Applications</option>
+<option value="meta.webapps">Web Applications Meta</option>
+<option value="gaming">Gaming</option>
+<option value="meta.gaming">Gaming Meta</option>
+<option value="webmasters">Webmasters</option>
+<option value="meta.webmasters">Webmasters Meta</option>
+<option value="cooking">Cooking</option>
+<option value="meta.cooking">Cooking Meta</option>
+<option value="gamedev">Game Development</option>
+<option value="meta.gamedev">Game Development Meta</option>
+<option value="photo">Photography</option>
+<option value="meta.photo">Photography Meta</option>
+<option value="stats">Statistical Analysis</option>
+<option value="meta.stats">Statistical Analysis Meta</option>
+<option value="math">Mathematics</option>
+<option value="meta.math">Mathematics Meta</option>
+<option value="diy">Home Improvement</option>
+<option value="meta.diy">Home Improvement Meta</option>
+<option value="meta.superuser">Meta Super User</option>
+<option value="meta.serverfault">Meta Server Fault</option>
+<option value="gis">GIS</option>
+<option value="meta.gis">GIS Meta</option>
+<option value="tex">TeX - LaTeX</option>
+<option value="meta.tex">TeX - LaTeX Meta</option>
+<option value="askubuntu">Ask Ubuntu</option>
+<option value="meta.askubuntu">Ask Ubuntu Meta</option>
+<option value="money">Personal Finance and Money</option>
+<option value="meta.money">Personal Finance and Money Meta</option>
+<option value="english">English Language and Usage</option>
+<option value="meta.english">English Language and Usage Meta</option>
+<option value="stackapps">Stack Apps</option>
+<option value="ux">User Experience</option>
+<option value="meta.ux">User Experience Meta</option>
+<option value="unix">Unix and Linux</option>
+<option value="meta.unix">Unix and Linux Meta</option>
+<option value="wordpress">WordPress</option>
+<option value="meta.wordpress">WordPress Meta</option>
+<option value="cstheory">Theoretical Computer Science</option>
+<option value="meta.cstheory">Theoretical Computer Science Meta</option>
+<option value="apple">Apple</option>
+<option value="meta.apple">Apple Meta</option>
+<option value="rpg">Role-playing Games</option>
+<option value="meta.rpg">Role-playing Games Meta</option>
+<option value="bicycles">Bicycles</option>
+<option value="meta.bicycles">Bicycles Meta</option>
+<option value="programmers">Programmers</option>
+<option value="meta.programmers">Programmers Meta</option>
+<option value="electronics">Electrical Engineering</option>
+<option value="meta.electronics">Electrical Engineering Meta</option>
+<option value="android">Android Enthusiasts</option>
+<option value="meta.android">Android Enthusiasts Meta</option>
+<option value="answers.onstartups">OnStartups</option>
+<option value="meta.answers.onstartups">OnStartups Meta</option>
+<option value="boardgames">Board and Card Games</option>
+<option value="meta.boardgames">Board and Card Games Meta</option>
+<option value="physics">Physics</option>
+<option value="meta.physics">Physics Meta</option>
+<option value="homebrew">Homebrew</option>
+<option value="meta.homebrew">Homebrew Meta</option>
+<option value="security">IT Security</option>
+<option value="meta.security">IT Security Meta</option>
+<option value="writers">Writers</option>
+<option value="meta.writers">Writers Meta</option>
+<option value="avp">Audio-Video Production</option>
+<option value="meta.avp">Audio-Video Production Meta</option>
+<option value="graphicdesign">Graphic Design</option>
+<option value="meta.graphicdesign">Graphic Design Meta</option>
+<option value="dba">Database Administrators</option>
+<option value="meta.dba">Database Administrators Meta</option>
+<option value="scifi">Science Fiction and Fantasy</option>
+<option value="meta.scifi">Science Fiction and Fantasy Meta</option>
+<option value="discuss.area51">Area 51 Discussions</option>
+<option value="codereview">Code Review</option>
+<option value="meta.codereview">Code Review Meta</option>
+<option value="codegolf">Code Golf</option>
+<option value="meta.codegolf">Code Golf Meta</option>
+<option value="quant">Quantitative Finance</option>
+<option value="meta.quant">Quantitative Finance Meta</option>
+<option value="pm">Project Management</option>
+<option value="meta.pm">Project Management Meta</option>
+<option value="skeptics">Skeptics</option>
+<option value="meta.skeptics">Skeptics Meta</option>
+<option value="fitness">Fitness and Nutrition</option>
+<option value="meta.fitness">Fitness and Nutrition Meta</option>
+<option value="drupal">Drupal Answers</option>
+<option value="meta.drupal">Drupal Answers Meta</option>
+<option value="mechanics">Motor Vehicle Maintenance and Repair</option>
+<option value="meta.mechanics">Motor Vehicle Maintenance and Repair Meta</option>
+<option value="parenting">Parenting</option>
+<option value="meta.parenting">Parenting Meta</option>
+<option value="sharepoint">SharePoint</option>
+<option value="meta.sharepoint">SharePoint Meta</option>
+<option value="music">Musical Practice and Performance</option>
+<option value="meta.music">Musical Practice and Performance Meta</option>
+<option value="sqa">Software Quality Assurance and Testing</option>
+<option value="meta.sqa">Software Quality Assurance and Testing Meta</option>
+<option value="judaism">Jewish Life and Learning</option>
+<option value="meta.judaism">Jewish Life and Learning Meta</option>
+<option value="german">German Language and Usage</option>
+<option value="meta.german">German Language and Usage Meta</option>
+<option value="japanese">Japanese Language and Usage</option>
+<option value="meta.japanese">Japanese Language and Usage Meta</option>
+<option value="astronomy">Astronomy</option>
+<option value="meta.astronomy">Astronomy Meta</option>
+<option value="philosophy">Philosophy</option>
+<option value="meta.philosophy">Philosophy Meta</option>
+<option value="gardening">Gardening and Landscaping</option>
+<option value="meta.gardening">Gardening and Landscaping Meta</option>
+<option value="travel">Travel</option>
+<option value="meta.travel">Travel Meta</option>
+<option value="productivity">Personal Productivity</option>
+<option value="meta.productivity">Personal Productivity Meta</option>
+<option value="crypto">Cryptography</option>
+<option value="meta.crypto">Cryptography Meta</option>
+<option value="literature">Literature</option>
+<option value="meta.literature">Literature Meta</option>
+<option value="dsp">Signal Processing</option>
+<option value="meta.dsp">Signal Processing Meta</option>
+<option value="french">French Language and Usage</option>
+<option value="meta.french">French Language and Usage Meta</option>
+<option value="christianity">Christianity</option>
+<option value="meta.christianity">Christianity Meta</option>
+<option value="bitcoin">Bitcoin</option>
+<option value="meta.bitcoin">Bitcoin Meta</option>
+<option value="linguistics">Linguistics</option>
+<option value="meta.linguistics">Linguistics Meta</option>
+<option value="theoreticalphysics">Theoretical Physics</option>
+<option value="meta.theoreticalphysics">Theoretical Physics Meta</option>
+<option value="hermeneutics">Biblical Hermeneutics</option>
+<option value="meta.hermeneutics">Biblical Hermeneutics Meta</option>
+<option value="history">History</option>
+<option value="meta.history">History Meta</option>
+<option value="economics">Economics</option>
+<option value="meta.economics">Economics Meta</option>
+<option value="healthcareit">Healthcare IT</option>
+<option value="meta.healthcareit">Healthcare IT Meta</option>
+<option value="bricks">LEGO&#174; Answers</option>
+<option value="meta.bricks">LEGO&#174; Answers Meta</option>
+<option value="firearms">Firearms</option>
+<option value="meta.firearms">Firearms Meta</option>
+<option value="spanish">Spanish Language and Usage</option>
+<option value="meta.spanish">Spanish Language and Usage Meta</option>
+<option value="scicomp">Computational Science</option>
+<option value="meta.scicomp">Computational Science Meta</option>
+<option value="movies">Movies and TV</option>
+<option value="meta.movies">Movies and TV Meta</option>
+<option value="chinese">Chinese Language and Usage</option>
+<option value="meta.chinese">Chinese Language and Usage Meta</option>
+<option value="biology">Biology</option>
+<option value="meta.biology">Biology Meta</option>
+<option value="poker">Poker</option>
+<option value="meta.poker">Poker Meta</option>
+<option value="sexuality">Sexuality</option>
+<option value="meta.sexuality">Sexuality Meta</option>
+<option value="mathematica">Mathematica</option>
+<option value="meta.mathematica">Mathematica Meta</option>
+<option value="cogsci">Cognitive Sciences</option>
+<option value="meta.cogsci">Cognitive Sciences Meta</option>
+</select></p>
+<p>
+Your account on this site: <span id="account">(No account information loaded yet)</span>   
+<a href="#" class="small-button" id="refresh">Refresh</a>   
+<a href="#" class="small-button" id="token_reset">Reset Access Token</a>
+</p>
+<p></p>
+
+<div class="legendary">
+<h3>Progress towards Legendary</h3>
+
+<div id="legendary-progress-container"><div class="progress-bar" id="legendary-progress"></div></div>
+
+<p>Days at or above 200 rep: <span id="legendary-count"></span></p>
+
+</div>
+
+<div class="generalist">
+<h3>Progress towards Generalist</h3>
+<p><b>Note:</b> If you see a (?) next to a tag,
+this indicates that you <i>are likely</i> to have less than 15 upvotes in this tag, but fetching your actual upvote count would not be
+feasible.  
+</p>
+<p><b>Note 2:</b> Some sites do not yet qualify for generalist, there must be at least 40 tags with 
+ 200 questions.  This site has <span id="tag_count">(unknown)</span> total tags with 200 questions.</p>
+<div id="generalist-progress-container"><div class="progress-bar" id="generalist-progress"></div></div>
+
+
+<div id="generalist-result"><img src="../common/load.gif"></div>
+
+</div>
+
+<div class="badgelist">
+<h3>Questions close to "Nice Question" (10 upvotes)</h3>
+<div id="question_list_bronze"><img src="../common/load.gif"></div>
+
+</div>
+
+<div class="badgelist">
+<h3>Questions close to "Good Question" (25 upvotes)</h3>
+<div id="question_list_silver"><img src="../common/load.gif"></div>
+</div>
+
+<div class="badgelist">
+<h3>Questions close to "Great Question" (100 upvotes)</h3>
+<div id="question_list_gold"><img src="../common/load.gif"></div>
+</div>
+
+<div class="badgelist">
+<h3>Answers close to "Nice Answer" (10 upvotes)</h3>
+<div id="answer_list_bronze"><img src="../common/load.gif"></div>
+</div>
+
+<div class="badgelist">
+<h3>Answers close to "Good Answer" (25 upvotes)</h3>
+<div id="answer_list_silver"><img src="../common/load.gif"></div>
+</div>
+
+<div class="badgelist">
+<h3>Answers close to "Great Answer" (100 upvotes)</h3>
+<div id="answer_list_gold"><img src="../common/load.gif"></div>
+</div>
+
+
+<p>This application uses an "access token" to access your account information 
+on the StackExchange network.  If you'd like, you can <a href="#" id="revoke">revoke</a> 
+this permission.</p>
+<div id="pagefooter"></div>
+</div>
+</body>
+</html>

@@ -6,6 +6,7 @@ var StackExchangeAPI = {
 	request_queue: [],
 	default_backoff: 1000,
 	current_backoff: 0,
+	site_list: {},
 
 	_get_access_token: function (client_id) {
 		var bits = window.location.href.split('#');
@@ -84,45 +85,46 @@ var StackExchangeAPI = {
 		
 		
 	},
-
-	_on_site_list_success: function (json) {
+	
+	populate_site_select: function(select_id) {
+		var option_list = "";
+		
+		for(var site_id in StackExchangeAPI.site_list) {
+			var item = StackExchangeAPI.site_list[site_id];
+			option_list = option_list + '<option value="'+site_id+'">'+item['name']+'</option>\n';
+		}
+		
+		$(select_id).html(option_list);
+	},
+	
+	_on_site_list_success: function(json) {
 		if(!('items' in json)) {
 			return;
 		}
 		
-		var option_list = "";
-		var site_array = "";
+		var site_list = {}
+		
 		for(var item_id in json.items) {
 			var item = json.items[item_id];
 			
-			option_list = option_list + '<option value="'+item['api_site_parameter']+'">'+item['name']+'</option>\n';
-			site_array = site_array + '"'+item['api_site_parameter']+'" :{name:"'+item['name']+
-				'",api_site_parameter:"'+item['api_site_parameter']+
-				'",site_url:"'+item['site_url']+
-				'",icon_url:"'+item['icon_url']+'"},\n';
+			site_list[item['api_site_parameter']] = {
+				name:item['name'],
+				site_url:item['site_url'],
+			};
 		}
 		
-		console.log(option_list);
-		console.log(site_array);
-		
-	},
-
-	fetch_site_list: function () {
+		StackExchangeAPI.site_list = site_list;
+	}
+	
+	_build_site_list: function() {
 		$.ajax({
 			type: "GET",
-			url: "http://api.stackexchange.com/2.0/sites?filter=!)qzjwE32lBgZf60JN0vg&pagesize=500", 
-			success: StackExchangeAPI._on_site_list_success,
-			dataType:"jsonp",
+			url: "http://a86seapi.appspot.com/sites",
+			success: function (json) {
+				StackExchangeAPI._on_site_list_success(json);
+			},
+			dataType: "json",
 		});
-	},
-	
-	build_site_select: function(site_list) {
-		var output = "";
-		for(var api_name in site_list) {
-			var site = site_list[api_name];
-			output = output + '<option value="'+api_name+'">'+site.name+'</option>';
-		}
-		return output;
 	},
 
 	call: function (api_call, args, on_success, on_error) {
@@ -145,6 +147,7 @@ var StackExchangeAPI = {
 		StackExchangeAPI.current_backoff = StackExchangeAPI.default_backoff;
 		StackExchangeAPI.client_id = new_client_id;
 		$.extend(StackExchangeAPI.common_args, client_common_args);
+		StackExchangeAPI._build_site_list();
 	},
 
 	auth: function (cur_site, on_success, on_error) {
