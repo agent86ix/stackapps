@@ -114,7 +114,7 @@ var StackExchangeAPI = {
 		}
 		
 		StackExchangeAPI.site_list = site_list;
-	}
+	},
 	
 	_build_site_list: function() {
 		$.ajax({
