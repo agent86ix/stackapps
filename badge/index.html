@@ -73,12 +73,8 @@
 var user_site = "stackoverflow";
 var user_id = 0;
 
-var api_call = StackExchangeAPI.call;
-var api_reset_access_token = StackExchangeAPI.reset_access_token;
-var api_revoke_access = StackExchangeAPI.revoke_access;
-var api_abort_queue = StackExchangeAPI.abort_queue;
-var api_init = StackExchangeAPI.init;
-var api_auth = StackExchangeAPI.auth
+var api = StackExchangeAPI;
+
 
 var top_tag_list = [];
 var top_tag_page = 1;
@@ -106,7 +102,7 @@ function on_top_tag_success(json) {
 	
 	if(min_score >= 15 && top_tag_page < 5) {
 		top_tag_page = top_tag_page + 1;
-		api_call("/users/"+user_id+"/top-answer-tags/", 
+		api.call("/users/"+user_id+"/top-answer-tags/", 
 				{site: user_site, filter:'!n0IbH.9B9.', pagesize:50, page:top_tag_page}, 
 				on_top_tag_success);
 		return;
@@ -168,7 +164,7 @@ function on_tag_list_success(json) {
 		top_tag_list.push(item['name']);
 	}	
 	
-	api_call("/users/"+user_id+"/top-answer-tags/", 
+	api.call("/users/"+user_id+"/top-answer-tags/", 
 		{site: user_site, filter:'!n0IbH.9B9.', page:top_tag_page, pagesize:50}, 
 		on_top_tag_success);
 	
@@ -242,32 +238,32 @@ function refresh_all() {
 		dataType:"json",
 	});
 	
-	api_call("tags", {site: user_site, pagesize:1, order:'desc', sort:'popular', min:200, filter:'!nA7qLnUvBf'}, on_tag_count_success, on_error);
+	api.call("tags", {site: user_site, pagesize:1, order:'desc', sort:'popular', min:200, filter:'!nA7qLnUvBf'}, on_tag_count_success, on_error);
 	
-	api_call("tags", {site: user_site, pagesize:40,order:'desc',sort:'popular'}, on_tag_list_success, on_error);
+	api.call("tags", {site: user_site, pagesize:40,order:'desc',sort:'popular'}, on_tag_list_success, on_error);
 	
-	api_call("/users/"+user_id+"/questions/", 
+	api.call("/users/"+user_id+"/questions/", 
 		$.extend({site: user_site, min: '7', max: '9', filter:'!)qk0x1x-Z8ryVmFbK.yk'}, vote_list_common_args),
 		function (json) { on_vote_list_success(json, "question_list_bronze") });
 		
-	api_call("/users/"+user_id+"/questions/", 
+	api.call("/users/"+user_id+"/questions/", 
 		$.extend({site: user_site, min: '20', max: '24', filter:'!)qk0x1x-Z8ryVmFbK.yk'}, vote_list_common_args),
 		function (json) { on_vote_list_success(json, "question_list_silver") });
 		
-	api_call("/users/"+user_id+"/questions/", 
+	api.call("/users/"+user_id+"/questions/", 
 		$.extend({site: user_site, min: '90', max: '99', filter:'!)qk0x1x-Z8ryVmFbK.yk'}, vote_list_common_args),
 		function (json) { on_vote_list_success(json, "question_list_gold") });
 		
 	
-	api_call("/users/"+user_id+"/answers/", 
+	api.call("/users/"+user_id+"/answers/", 
 		$.extend({site: user_site, min: '7', max: '9', filter:'!mRNa90ViDb'}, vote_list_common_args),
 		function (json) { on_vote_list_success(json, "answer_list_bronze") });
 		
-	api_call("/users/"+user_id+"/answers/", 
+	api.call("/users/"+user_id+"/answers/", 
 		$.extend({site: user_site, min: '20', max: '24', filter:'!mRNa90ViDb'}, vote_list_common_args),
 		function (json) { on_vote_list_success(json, "answer_list_silver") });
 		
-	api_call("/users/"+user_id+"/answers/", 
+	api.call("/users/"+user_id+"/answers/", 
 		$.extend({site: user_site, min: '90', max: '99', filter:'!mRNa90ViDb'}, vote_list_common_args),
 		function (json) { on_vote_list_success(json, "answer_list_gold") });
 }
@@ -317,7 +313,7 @@ function on_auth_success(json) {
 	user_id = user['user_id'];
 	$("#account").html('<a target="_blank" href="'+stackexchange_site_array[user_site].site_url+'/users/'+user_id+'">'+
 		user['display_name'] + "</a>");
-	//api_call("tags", {pagesize:40,order:'desc',sort:'popular'}, on_tag_list_success, on_error);
+	//api.call("tags", {pagesize:40,order:'desc',sort:'popular'}, on_tag_list_success, on_error);
 	
 	refresh_all();
 
@@ -346,44 +342,46 @@ $(document).ready(function() {
 	}
 	
 	//var cur_site = $("#siteselect").find('[value="'+user_site+'"]');
-	$("#siteselect").val(user_site);
+	//$("#siteselect").val(user_site);
 	$("#siteselect").change(function (e) {
 		user_site = $("#siteselect").val();
 		$.cookies.set('badges_user_site', $("#siteselect").val());
 		
-		api_abort_queue();
+		api.abort_queue();
 		reset_output();
-		api_auth(user_site, on_auth_success, on_auth_fail);
+		api.auth(user_site, on_auth_success, on_auth_fail);
 	});
 	
 	$("#legendary-progress").progressbar();
 	$("#generalist-progress").progressbar();
 	
 	$("#refresh").click(function (e) {
-		api_abort_queue();
+		api.abort_queue();
 		reset_output();
-		api_auth(user_site, on_auth_success, on_auth_fail);
+		api.auth(user_site, on_auth_success, on_auth_fail);
 		e.preventDefault();
 	}).button();
 
 	$("#token_reset").click(function (e) {
-		api_abort_queue();
-		api_reset_access_token(client_id);
+		api.abort_queue();
+		api.reset_access_token(client_id);
 		e.preventDefault();
 	}).button();
 
 	$("#revoke").click(function (e) {
 		clear_output();
-		api_abort_queue();
-		api_revoke_access();
+		api.abort_queue();
+		api.revoke_access();
 		alert("Your authorization has been revoked.");
 		e.preventDefault();
 	});
 
 	
-	api_init(client_id, args);
+	api.init(client_id, args);
 	
-	api_auth(user_site, on_auth_success, on_auth_fail);
+	api.populate_site_select("#siteselect", user_site);
+	
+	api.auth(user_site, on_auth_success, on_auth_fail);
 	
 	
 });
@@ -396,170 +394,7 @@ $(document).ready(function() {
 
 <i>Badges?  We don't need no <a href="http://www.youtube.com/watch?v=TFwprS_L6tg">stinking badges!</a></i>
 
-<p>Check my progress on: <select id="siteselect">
-<option value="stackoverflow">Stack Overflow</option>
-<option value="serverfault">Server Fault</option>
-<option value="superuser">Super User</option>
-<option value="meta.stackoverflow">Meta Stack Overflow</option>
-<option value="webapps">Web Applications</option>
-<option value="meta.webapps">Web Applications Meta</option>
-<option value="gaming">Gaming</option>
-<option value="meta.gaming">Gaming Meta</option>
-<option value="webmasters">Webmasters</option>
-<option value="meta.webmasters">Webmasters Meta</option>
-<option value="cooking">Cooking</option>
-<option value="meta.cooking">Cooking Meta</option>
-<option value="gamedev">Game Development</option>
-<option value="meta.gamedev">Game Development Meta</option>
-<option value="photo">Photography</option>
-<option value="meta.photo">Photography Meta</option>
-<option value="stats">Statistical Analysis</option>
-<option value="meta.stats">Statistical Analysis Meta</option>
-<option value="math">Mathematics</option>
-<option value="meta.math">Mathematics Meta</option>
-<option value="diy">Home Improvement</option>
-<option value="meta.diy">Home Improvement Meta</option>
-<option value="meta.superuser">Meta Super User</option>
-<option value="meta.serverfault">Meta Server Fault</option>
-<option value="gis">GIS</option>
-<option value="meta.gis">GIS Meta</option>
-<option value="tex">TeX - LaTeX</option>
-<option value="meta.tex">TeX - LaTeX Meta</option>
-<option value="askubuntu">Ask Ubuntu</option>
-<option value="meta.askubuntu">Ask Ubuntu Meta</option>
-<option value="money">Personal Finance and Money</option>
-<option value="meta.money">Personal Finance and Money Meta</option>
-<option value="english">English Language and Usage</option>
-<option value="meta.english">English Language and Usage Meta</option>
-<option value="stackapps">Stack Apps</option>
-<option value="ux">User Experience</option>
-<option value="meta.ux">User Experience Meta</option>
-<option value="unix">Unix and Linux</option>
-<option value="meta.unix">Unix and Linux Meta</option>
-<option value="wordpress">WordPress</option>
-<option value="meta.wordpress">WordPress Meta</option>
-<option value="cstheory">Theoretical Computer Science</option>
-<option value="meta.cstheory">Theoretical Computer Science Meta</option>
-<option value="apple">Apple</option>
-<option value="meta.apple">Apple Meta</option>
-<option value="rpg">Role-playing Games</option>
-<option value="meta.rpg">Role-playing Games Meta</option>
-<option value="bicycles">Bicycles</option>
-<option value="meta.bicycles">Bicycles Meta</option>
-<option value="programmers">Programmers</option>
-<option value="meta.programmers">Programmers Meta</option>
-<option value="electronics">Electrical Engineering</option>
-<option value="meta.electronics">Electrical Engineering Meta</option>
-<option value="android">Android Enthusiasts</option>
-<option value="meta.android">Android Enthusiasts Meta</option>
-<option value="answers.onstartups">OnStartups</option>
-<option value="meta.answers.onstartups">OnStartups Meta</option>
-<option value="boardgames">Board and Card Games</option>
-<option value="meta.boardgames">Board and Card Games Meta</option>
-<option value="physics">Physics</option>
-<option value="meta.physics">Physics Meta</option>
-<option value="homebrew">Homebrew</option>
-<option value="meta.homebrew">Homebrew Meta</option>
-<option value="security">IT Security</option>
-<option value="meta.security">IT Security Meta</option>
-<option value="writers">Writers</option>
-<option value="meta.writers">Writers Meta</option>
-<option value="avp">Audio-Video Production</option>
-<option value="meta.avp">Audio-Video Production Meta</option>
-<option value="graphicdesign">Graphic Design</option>
-<option value="meta.graphicdesign">Graphic Design Meta</option>
-<option value="dba">Database Administrators</option>
-<option value="meta.dba">Database Administrators Meta</option>
-<option value="scifi">Science Fiction and Fantasy</option>
-<option value="meta.scifi">Science Fiction and Fantasy Meta</option>
-<option value="discuss.area51">Area 51 Discussions</option>
-<option value="codereview">Code Review</option>
-<option value="meta.codereview">Code Review Meta</option>
-<option value="codegolf">Code Golf</option>
-<option value="meta.codegolf">Code Golf Meta</option>
-<option value="quant">Quantitative Finance</option>
-<option value="meta.quant">Quantitative Finance Meta</option>
-<option value="pm">Project Management</option>
-<option value="meta.pm">Project Management Meta</option>
-<option value="skeptics">Skeptics</option>
-<option value="meta.skeptics">Skeptics Meta</option>
-<option value="fitness">Fitness and Nutrition</option>
-<option value="meta.fitness">Fitness and Nutrition Meta</option>
-<option value="drupal">Drupal Answers</option>
-<option value="meta.drupal">Drupal Answers Meta</option>
-<option value="mechanics">Motor Vehicle Maintenance and Repair</option>
-<option value="meta.mechanics">Motor Vehicle Maintenance and Repair Meta</option>
-<option value="parenting">Parenting</option>
-<option value="meta.parenting">Parenting Meta</option>
-<option value="sharepoint">SharePoint</option>
-<option value="meta.sharepoint">SharePoint Meta</option>
-<option value="music">Musical Practice and Performance</option>
-<option value="meta.music">Musical Practice and Performance Meta</option>
-<option value="sqa">Software Quality Assurance and Testing</option>
-<option value="meta.sqa">Software Quality Assurance and Testing Meta</option>
-<option value="judaism">Jewish Life and Learning</option>
-<option value="meta.judaism">Jewish Life and Learning Meta</option>
-<option value="german">German Language and Usage</option>
-<option value="meta.german">German Language and Usage Meta</option>
-<option value="japanese">Japanese Language and Usage</option>
-<option value="meta.japanese">Japanese Language and Usage Meta</option>
-<option value="astronomy">Astronomy</option>
-<option value="meta.astronomy">Astronomy Meta</option>
-<option value="philosophy">Philosophy</option>
-<option value="meta.philosophy">Philosophy Meta</option>
-<option value="gardening">Gardening and Landscaping</option>
-<option value="meta.gardening">Gardening and Landscaping Meta</option>
-<option value="travel">Travel</option>
-<option value="meta.travel">Travel Meta</option>
-<option value="productivity">Personal Productivity</option>
-<option value="meta.productivity">Personal Productivity Meta</option>
-<option value="crypto">Cryptography</option>
-<option value="meta.crypto">Cryptography Meta</option>
-<option value="literature">Literature</option>
-<option value="meta.literature">Literature Meta</option>
-<option value="dsp">Signal Processing</option>
-<option value="meta.dsp">Signal Processing Meta</option>
-<option value="french">French Language and Usage</option>
-<option value="meta.french">French Language and Usage Meta</option>
-<option value="christianity">Christianity</option>
-<option value="meta.christianity">Christianity Meta</option>
-<option value="bitcoin">Bitcoin</option>
-<option value="meta.bitcoin">Bitcoin Meta</option>
-<option value="linguistics">Linguistics</option>
-<option value="meta.linguistics">Linguistics Meta</option>
-<option value="theoreticalphysics">Theoretical Physics</option>
-<option value="meta.theoreticalphysics">Theoretical Physics Meta</option>
-<option value="hermeneutics">Biblical Hermeneutics</option>
-<option value="meta.hermeneutics">Biblical Hermeneutics Meta</option>
-<option value="history">History</option>
-<option value="meta.history">History Meta</option>
-<option value="economics">Economics</option>
-<option value="meta.economics">Economics Meta</option>
-<option value="healthcareit">Healthcare IT</option>
-<option value="meta.healthcareit">Healthcare IT Meta</option>
-<option value="bricks">LEGO&#174; Answers</option>
-<option value="meta.bricks">LEGO&#174; Answers Meta</option>
-<option value="firearms">Firearms</option>
-<option value="meta.firearms">Firearms Meta</option>
-<option value="spanish">Spanish Language and Usage</option>
-<option value="meta.spanish">Spanish Language and Usage Meta</option>
-<option value="scicomp">Computational Science</option>
-<option value="meta.scicomp">Computational Science Meta</option>
-<option value="movies">Movies and TV</option>
-<option value="meta.movies">Movies and TV Meta</option>
-<option value="chinese">Chinese Language and Usage</option>
-<option value="meta.chinese">Chinese Language and Usage Meta</option>
-<option value="biology">Biology</option>
-<option value="meta.biology">Biology Meta</option>
-<option value="poker">Poker</option>
-<option value="meta.poker">Poker Meta</option>
-<option value="sexuality">Sexuality</option>
-<option value="meta.sexuality">Sexuality Meta</option>
-<option value="mathematica">Mathematica</option>
-<option value="meta.mathematica">Mathematica Meta</option>
-<option value="cogsci">Cognitive Sciences</option>
-<option value="meta.cogsci">Cognitive Sciences Meta</option>
-</select></p>
+<p>Check my progress on: <select id="siteselect"></select></p>
 <p>
 Your account on this site: <span id="account">(No account information loaded yet)</span>   
 <a href="#" class="small-button" id="refresh">Refresh</a>   

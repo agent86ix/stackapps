@@ -7,6 +7,7 @@ var StackExchangeAPI = {
 	default_backoff: 1000,
 	current_backoff: 0,
 	site_list: {},
+	site_list_ready: 0,
 
 	_get_access_token: function (client_id) {
 		var bits = window.location.href.split('#');
@@ -86,7 +87,13 @@ var StackExchangeAPI = {
 		
 	},
 	
-	populate_site_select: function(select_id) {
+	populate_site_select: function(select_id, default_val) {
+	
+		if(StackExchangeAPI.site_list_ready == 0) {
+			setTimeout(function() {StackExchangeAPI.populate_site_select(select_id, default_val)}, 100);
+			return;
+		}
+	
 		var option_list = "";
 		
 		for(var site_id in StackExchangeAPI.site_list) {
@@ -95,6 +102,7 @@ var StackExchangeAPI = {
 		}
 		
 		$(select_id).html(option_list);
+		$(select_id).val(default_val);
 	},
 	
 	_on_site_list_success: function(json) {
@@ -102,18 +110,18 @@ var StackExchangeAPI = {
 			return;
 		}
 		
-		var site_list = {}
+		StackExchangeAPI.site_list = {}
 		
 		for(var item_id in json.items) {
 			var item = json.items[item_id];
 			
-			site_list[item['api_site_parameter']] = {
+			StackExchangeAPI.site_list[item['api_site_parameter']] = {
 				name:item['name'],
 				site_url:item['site_url'],
 			};
 		}
 		
-		StackExchangeAPI.site_list = site_list;
+		StackExchangeAPI.site_list_ready = 1;
 	},
 	
 	_build_site_list: function() {
