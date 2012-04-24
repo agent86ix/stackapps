@@ -159,6 +159,12 @@ var StackExchangeAPI = {
 	},
 
 	auth: function (cur_site, on_success, on_error) {
+		
+		if(StackExchangeAPI.site_list_ready == 0) {
+			setTimeout(function() {StackExchangeAPI.auth(cur_site, on_success, on_error)}, 100);
+			return;
+		}
+		
 		StackExchangeAPI._get_access_token(StackExchangeAPI.client_id);
 		
 		StackExchangeAPI.call('/me', {site:cur_site}, function(json) {

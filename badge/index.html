@@ -5,56 +5,11 @@
 <title>Stinking Badges!</title>
 
 <link type="text/css" href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.16/themes/cupertino/jquery-ui.css" rel="Stylesheet" />	
-<style type="text/css">
-
-	body{ font: 90% "Trebuchet MS", sans-serif; margin: 20px;}
-	td{padding:2px;}
-	table {border-collapse:collapse;}
-	.post-score { 
-		padding: 3px 3px 3px 2px;
-		height: 15px;
-		line-height: 1.3;
-		margin-right: 10px;
-		text-align: center;
-		min-width: 20px;
-	}
-	.progress-bar {
-		width: 300px;
-		height:15px;
-		padding: 5px;
-	}
-	
-	.shadowbox {
-	  -moz-box-shadow:    3px 3px 5px 6px #ccc;
-	  -webkit-box-shadow: 3px 3px 5px 6px #ccc;
-	  box-shadow:         3px 3px 5px 6px #ccc;
-	  background-color: #eee;
-	  padding:15px;
-	}
-	
-	.tag {
-		font-size: .9em;
-		padding: 3px 4px;
-		margin: 5px;
-		border-width: 0px 1px 1px 0px;
-		background-color: white;
-		color: #666;
-		border-color: #666;
-		border-style: solid;
-		cursor: auto;
-		text-decoration: none;
-		line-height: 180%;
-	}
-	
-	.small-button { font-size:12px; }
-
-	
-</style>
+<link type="text/css" href="../common/style.css" rel="Stylesheet" />
 <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.6.4/jquery.min.js"></script>
 <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.16/jquery-ui.min.js"></script>
 <script type="text/javascript" src="../js/api.js"></script>
 <script type="text/javascript" src="../js/common.js"></script>
-<script type="text/javascript" src="../js/sitelist.js"></script>
 <script type="text/javascript" src="../js/jquery.iecors.js"></script>
 
 <script type="text/javascript" src="../js/jquery.cookies.min.js"></script>
@@ -87,7 +42,7 @@ function on_top_tag_success(json) {
 	
 	var good_output = "";
 	var bad_output = "";
-	var site_url = stackexchange_site_array[user_site].site_url;
+	var site_url = api.site_list[user_site].site_url;
 	var min_score = 16;
 	
 	
@@ -192,7 +147,7 @@ function on_vote_list_success(json, output_id) {
 		count++;
 		output_html = output_html + 
 			"<span class=\"post-score\">"+item['score']+
-			'</span> <a target="_blank" href="'+stackexchange_site_array[user_site].site_url+
+			'</span> <a target="_blank" href="'+api.site_list[user_site].site_url+
 			item_path+'">'+item['title']+"</a><br>\n";
 	}
 	if(count) {
@@ -311,7 +266,7 @@ function on_auth_success(json) {
 	var user = json.items[0];
 	
 	user_id = user['user_id'];
-	$("#account").html('<a target="_blank" href="'+stackexchange_site_array[user_site].site_url+'/users/'+user_id+'">'+
+	$("#account").html('<a target="_blank" href="'+api.site_list[user_site].site_url+'/users/'+user_id+'">'+
 		user['display_name'] + "</a>");
 	//api.call("tags", {pagesize:40,order:'desc',sort:'popular'}, on_tag_list_success, on_error);
 	
@@ -378,11 +333,8 @@ $(document).ready(function() {
 
 	
 	api.init(client_id, args);
-	
 	api.populate_site_select("#siteselect", user_site);
-	
 	api.auth(user_site, on_auth_success, on_auth_fail);
-	
 	
 });
 </script>
@@ -459,7 +411,7 @@ feasible.
 
 
 <p>This application uses an "access token" to access your account information 
-on the StackExchange network.  If you'd like, you can <a href="#" id="revoke">revoke</a> 
+on the Stack Exchange network.  If you'd like, you can <a href="#" id="revoke">revoke</a> 
 this permission.</p>
 <div id="pagefooter"></div>
 </div>
