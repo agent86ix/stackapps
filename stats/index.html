@@ -472,8 +472,8 @@ function on_answer_list_success(question_filter, question_stats, json) {
 	
 	if(question_id_list.length) {
 		var question_ids = question_id_list.join(';');
-		var args = $.extend({site:user_site,  pagesize: 100, order:'desc',
-			sort:'votes', filter: '!Ohw2Y3SaByDEP.MwR4LADUrZcaa0hGs69W6RAv0r7G)' }, question_filter.args);
+		var args = /*$.extend(*/ {site:user_site,  pagesize: 100, order:'desc',
+			sort:'votes', filter: '!Ohw2Y3SaByDEP.MwR4LADUrZcaa0hGs69W6RAv0r7G)' };//, question_filter.args);
 		api.call("/questions/"+question_ids, args, 
 			function(json) { on_answer_question_list_success(question_filter, question_stats, json); },
 			on_error);
