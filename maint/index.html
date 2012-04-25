@@ -30,6 +30,9 @@ var user_id = 0;
 
 var api = StackExchangeAPI;
 
+var question_filter = '!3wg4GB8fZ7Dv.7sqF';
+var answer_filter = '!mV2oEnRAeF';
+
 var vote_list_common_args = {pagesize:10, order:'desc', sort:'votes' };
 
 function on_vote_list_success(json, output_id) {
@@ -64,62 +67,26 @@ function on_vote_list_success(json, output_id) {
 
 function refresh_all() {
 
-	api.call("/users/"+user_id+"/questions/", 
+
+	api.call("/questions/", 
+		$.extend({site: user_site,  max: '-3', filter:'!3wg4GB8fZ7Dv.7sqF'}, vote_list_common_args),
+		function (json) { on_vote_list_success(json, "question_list_bronze") });
+
+	api.call("/answers/", 
 		$.extend({site: user_site, min: '7', max: '9', filter:'!)qk0x1x-Z8ryVmFbK.yk'}, vote_list_common_args),
 		function (json) { on_vote_list_success(json, "question_list_bronze") });
+
 		
-	api.call("/users/"+user_id+"/questions/", 
-		$.extend({site: user_site, min: '20', max: '24', filter:'!)qk0x1x-Z8ryVmFbK.yk'}, vote_list_common_args),
-		function (json) { on_vote_list_success(json, "question_list_silver") });
-		
-	api.call("/users/"+user_id+"/questions/", 
-		$.extend({site: user_site, min: '90', max: '99', filter:'!)qk0x1x-Z8ryVmFbK.yk'}, vote_list_common_args),
-		function (json) { on_vote_list_success(json, "question_list_gold") });
-		
-	
-	api.call("/users/"+user_id+"/answers/", 
-		$.extend({site: user_site, min: '7', max: '9', filter:'!mRNa90ViDb'}, vote_list_common_args),
-		function (json) { on_vote_list_success(json, "answer_list_bronze") });
-		
-	api.call("/users/"+user_id+"/answers/", 
-		$.extend({site: user_site, min: '20', max: '24', filter:'!mRNa90ViDb'}, vote_list_common_args),
-		function (json) { on_vote_list_success(json, "answer_list_silver") });
-		
-	api.call("/users/"+user_id+"/answers/", 
-		$.extend({site: user_site, min: '90', max: '99', filter:'!mRNa90ViDb'}, vote_list_common_args),
-		function (json) { on_vote_list_success(json, "answer_list_gold") });
 }
 
 function reset_output() {
 	$("#account").html("(No account information loaded yet)");
 	
-	$("#tag_count").html("(unknown)");
-
-	$("#legendary-progress").progressbar("value", 0);
-	$("#legendary-count").text("?");
-	
-	$("#generalist-progress").progressbar("value", 0);
-	$("#generalist-result").html('<img src="../common/load.gif">');
-
-	$("#question_list_bronze").html('<img src="../common/load.gif">');
-	$("#question_list_silver").html('<img src="../common/load.gif">');
-	$("#question_list_gold").html('<img src="../common/load.gif">');
-	
-	$("#answer_list_bronze").html('<img src="../common/load.gif">');
-	$("#answer_list_silver").html('<img src="../common/load.gif">');
 	$("#answer_list_gold").html('<img src="../common/load.gif">');
 }
 
 function clear_output() {
-	$("#generalist-result").html('');
 
-	$("#question_list_bronze").html('');
-	$("#question_list_silver").html('');
-	$("#question_list_gold").html('');
-	
-	$("#answer_list_bronze").html('');
-	$("#answer_list_silver").html('');
-	$("#answer_list_gold").html('');
 }
 
 function on_auth_success(json) {
@@ -214,6 +181,8 @@ Your account on this site: <span id="account">(No account information loaded yet
 <a href="#" class="small-button" id="refresh">Refresh</a>   
 <a href="#" class="small-button" id="token_reset">Reset Access Token</a>
 </p>
+
+
 <p></p>
 
 
