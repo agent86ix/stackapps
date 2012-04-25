@@ -810,9 +810,7 @@ $(document).ready(function() {
 	
 
 	
-	$("#siteselect").html(api.build_site_select(stackexchange_site_array));
-	
-	$("#siteselect").val(user_site);
+	api.populate_site_select("#siteselect", user_site);
 	$("#siteselect").change(function (e) {
 		user_site = $("#siteselect").val();
 		$.cookies.set('badges_user_site', $("#siteselect").val());
