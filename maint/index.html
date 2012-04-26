@@ -2,7 +2,7 @@
  
 <html>
 <head>
-<title>Stinking Badges!</title>
+<title>TIARA</title>
 
 <link type="text/css" href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.16/themes/cupertino/jquery-ui.css" rel="Stylesheet" />	
 <link type="text/css" href="../common/style.css" rel="Stylesheet" />
@@ -29,64 +29,98 @@ var user_site = "stackoverflow";
 var user_id = 0;
 
 var api = StackExchangeAPI;
+var calls_remaining = 0;
 
 var question_filter = '!3wg4GB8fZ7Dv.7sqF';
-var answer_filter = '!mV2oEnRAeF';
+var answer_filter = '!6Jr5R6djqh8Sv';
 
-var vote_list_common_args = {pagesize:10, order:'desc', sort:'votes' };
+var common_args = {pagesize:100, order:'asc', sort:'votes' };
 
-function on_vote_list_success(json, output_id) {
+var query_args = {
+	"questions-3":{type:"q", args:{max: '-3', filter:question_filter, page:0}},
+	"answers-3":{type:"a", args:{max: '-3', filter:answer_filter, page:0}},
+};
+
+
+var results_list = [];
+
+function display_output() {
+	var output_html = "";
+	for(var i in results_list) {
+		var item = results_list[i];
+		output_html = output_html + "<li>"+item.output_html+"</li>"
+	}
+	
+	$('#output').html(output_html);
+}
+
+function on_query_success (json, query_id) {
 	if(!('items' in json)) {
-		$('#'+output_id).html("An error occurred...");
+		$('#output').html("An error occurred...");
 		return;
 	}
 	
 	output_html = "";
-	var count = 0;
 	
 	for(var item_id in json['items']) {
 		var item = json['items'][item_id];
 		var item_path = '/q/'+item['question_id'];
+		var post_type = "Q";
 		if('answer_id' in item) {
 			item_path = '/a/'+item['answer_id'];
+			post_type = "A";
 		}
-		count++;
-		output_html = output_html + 
+		output_html = 
 			"<span class=\"post-score\">"+item['score']+
-			'</span> <a target="_blank" href="'+api.site_list[user_site].site_url+
+			'</span> '+post_type+' <a target="_blank" href="'+api.site_list[user_site].site_url+
 			item_path+'">'+item['title']+"</a><br>\n";
+		results_list.push({'output_html':output_html, score:item['score'], creation_date:item['creation_date']});
 	}
-	if(count) {
-		$('#'+output_id).html(output_html);
+	
+	if(json.has_more) {
+		var query = query_args[query_id];
+		query.args.page++;
+		make_query(query_id);
 	} else {
-		$('#'+output_id).html("None of your posts are close to this badge :(");
+		calls_remaining--;
+		if(calls_remaining == 0) display_output();
 	}
 	
 }
-
+function make_query(query_id) {
+	var query = query_args[query_id];
+	var api_endpoint = "error";
+	if(query.type == "q") {
+		api_endpoint = "/questions/";
+	} else if(query.type == "a") {
+		api_endpoint = "/answers/";
+	}
+	api.call(api_endpoint, 
+		$.extend({site: user_site}, common_args, query.args),
+		function (json) { on_query_success(json, query_id) });
+}
 
 function refresh_all() {
-
-
-	api.call("/questions/", 
-		$.extend({site: user_site,  max: '-3', filter:'!3wg4GB8fZ7Dv.7sqF'}, vote_list_common_args),
-		function (json) { on_vote_list_success(json, "question_list_bronze") });
-
-	api.call("/answers/", 
-		$.extend({site: user_site, min: '7', max: '9', filter:'!)qk0x1x-Z8ryVmFbK.yk'}, vote_list_common_args),
-		function (json) { on_vote_list_success(json, "question_list_bronze") });
-
-		
+	
+	calls_remaining = 0;
+	results_list = [];
+	
+	for(var query_id in query_args) {
+		var query = query_args[query_id];
+		query.args.page = 1;
+		calls_remaining++;
+		make_query(query_id);
+	}		
 }
 
 function reset_output() {
 	$("#account").html("(No account information loaded yet)");
 	
-	$("#answer_list_gold").html('<img src="../common/load.gif">');
+	$("#output").html('<img src="../common/load.gif">');
 }
 
 function clear_output() {
-
+	$("#output").html("");
 }
 
 function on_auth_success(json) {
@@ -171,9 +205,9 @@ $(document).ready(function() {
 </head>
 <body>
 <div class="shadowbox">
-<h1>StinkingBadges</h1>
+<h1>TIARA</h1>
 
-<i>Badges?  We don't need no <a href="http://www.youtube.com/watch?v=TFwprS_L6tg">stinking badges!</a></i>
+<p>Technical Inaccuracies And wRong Answers</p>
 
 <p>Check my progress on: <select id="siteselect"></select></p>
 <p>
@@ -182,7 +216,7 @@ Your account on this site: <span id="account">(No account information loaded yet
 <a href="#" class="small-button" id="token_reset">Reset Access Token</a>
 </p>
 
-
+<div id="output"></div>
 <p></p>
 
 
