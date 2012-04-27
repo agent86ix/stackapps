@@ -41,17 +41,28 @@ var query_args = {
 	"answers-3":{type:"a", args:{max: '-3', filter:answer_filter, page:0}},
 };
 
+var loading_html = '<span style="width:100%;text-align:center">Loading...<br><img src="../common/load.gif"></span>';
+
 
 var results_list = [];
 
+function sort_output(a, b) {
+	if(a.score > b.score) return 1;
+	if(a.score < b.score) return -1;
+	if(a.creation_date > b.creation_date) return 1;
+	if(a.creation_date < b.creation_date) return -1;
+	return 0;
+}
+
 function display_output() {
-	var output_html = "";
+	var output_html = "<ul>";
+	results_list.sort(sort_output);
 	for(var i in results_list) {
 		var item = results_list[i];
 		output_html = output_html + "<li>"+item.output_html+"</li>"
 	}
 	
-	$('#output').html(output_html);
+	$('#output').html(output_html+"</ul>");
 }
 
 function on_query_success (json, query_id) {
@@ -77,7 +88,7 @@ function on_query_success (json, query_id) {
 		results_list.push({'output_html':output_html, score:item['score'], creation_date:item['creation_date']});
 	}
 	
-	if(json.has_more) {
+	if(json.has_more && results_list.length < 500) {
 		var query = query_args[query_id];
 		query.args.page++;
 		make_query(query_id);
@@ -105,9 +116,14 @@ function refresh_all() {
 	calls_remaining = 0;
 	results_list = [];
 	
+	var date_now = new Date();
+	
+	var date_max = (date_now.getTime() - 24*60*60*1000*21)/1000;
+	
 	for(var query_id in query_args) {
 		var query = query_args[query_id];
 		query.args.page = 1;
+		query.args['todate'] = date_max.toFixed(0);
 		calls_remaining++;
 		make_query(query_id);
 	}		
@@ -116,7 +132,7 @@ function refresh_all() {
 function reset_output() {
 	$("#account").html("(No account information loaded yet)");
 	
-	$("#output").html('<img src="../common/load.gif">');
+	$("#output").html(loading_html);
 }
 
 function clear_output() {
@@ -193,8 +209,13 @@ $(document).ready(function() {
 		alert("Your authorization has been revoked.");
 		e.preventDefault();
 	});
-
 	
+	$("#helpareatoggle").click(function(e) {
+		$("#helparea").toggle();
+		e.preventDefault();
+	});
+
+	reset_output();
 	api.init(client_id, args);
 	api.populate_site_select("#siteselect", user_site);
 	api.auth(user_site, on_auth_success, on_auth_fail);
@@ -205,18 +226,48 @@ $(document).ready(function() {
 </head>
 <body>
 <div class="shadowbox">
-<h1>TIARA</h1>
+<h1>TIARA: Technical Inaccuracies And wRong Answers</h1>
 
-<p>Technical Inaccuracies And wRong Answers</p>
+<p id="helpareatoggle">Don't know what to do with this list?  Click here for help.</p>
 
-<p>Check my progress on: <select id="siteselect"></select></p>
+<div id="helparea" style="display:none">
+<p> This tool is intended to help you locate potential areas of low quality content.  What should
+ be done about items on this list depends on what it is and how much "moderation power" you have.
+ <b>When possible, try to leave comments so that people understand why action was taken, 
+ and have a chance to improve.</b>
+ </p>
+
+
+<p>For answers:</P>
+<ul>
+<li>If something is <b>not an answer</b> - it's a comment, another question, or makes no attempt to answer the
+question, <b>flag it.</b></li>
+<li>If something <b>needs editing</b> - consider suggesting an edit or <b>edit it</b> to improve it.  Upvote 
+fixed posts if you can.</li>
+<li>If something is <b>wrong or inaccurate</b> - vote it down or <b>vote to delete it</b> if you can.
+</ul>
+
+<p>For questions:</P>
+<ul>
+<li>If something is not closed, but is <b>violating the FAQ</b> or established site policy - <b>vote to close it.</b></li>
+<li>If something <b>needs editing</b> - consider suggesting an edit or <b>edit it</b> to improve it.  Upvote 
+fixed posts if you can.</li>
+<li>If something is closed and <b>abandoned or unsalvageable</b> - vote it down or <b>vote to delete it</b> if you can.
+</ul>
+
+
+
+
+</div>
+
+<p>Search for highly downvoted posts on: <select id="siteselect"></select></p>
 <p>
 Your account on this site: <span id="account">(No account information loaded yet)</span>   
 <a href="#" class="small-button" id="refresh">Refresh</a>   
 <a href="#" class="small-button" id="token_reset">Reset Access Token</a>
 </p>
 
-<div id="output"></div>
+<div id="output" width="100%"></div>
 <p></p>
 
 

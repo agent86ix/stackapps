@@ -121,7 +121,8 @@ var StackExchangeAPI = {
 			};
 		}
 		
-		StackExchangeAPI.site_list_ready = 1;
+		setTimeout(function() {StackExchangeAPI.site_list_ready = 1}, 100);
+		//StackExchangeAPI.site_list_ready = 1;
 	},
 	
 	_build_site_list: function() {
