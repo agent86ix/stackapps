@@ -41,7 +41,7 @@ var query_args = {
 	"answers-3":{type:"a", args:{max: '-3', filter:answer_filter, page:0}},
 };
 
-var loading_html = '<span style="width:100%;text-align:center">Loading...<br><img src="../common/load.gif"></span>';
+var loading_html = '<span style="min-width:100%;text-align:center">Loading...<br><img src="../common/load.gif"></span>';
 
 
 var results_list = [];
@@ -75,11 +75,16 @@ function on_query_success (json, query_id) {
 	
 	for(var item_id in json['items']) {
 		var item = json['items'][item_id];
-		var item_path = '/q/'+item['question_id'];
-		var post_type = "Q";
+		var item_path;
+		var post_type;
+		
 		if('answer_id' in item) {
 			item_path = '/a/'+item['answer_id'];
 			post_type = "A";
+		} else {
+			if(!('closed_reason' in item) && item.is_answered) continue;
+			item_path = '/q/'+item['question_id'];
+			post_type = "Q";
 		}
 		output_html = 
 			"<span class=\"post-score\">"+item['score']+
@@ -226,19 +231,21 @@ $(document).ready(function() {
 </head>
 <body>
 <div class="shadowbox">
-<h1>TIARA: Technical Inaccuracies And wRong Answers</h1>
+<h1>TIARA: Technical Inaccuracies & Altogether wRong Answers</h1>
 
-<p id="helpareatoggle">Don't know what to do with this list?  Click here for help.</p>
+<p id="helpareatoggle"><b>Don't know what to do with this list?  <u>Click here</u> for help.</b></p>
 
 <div id="helparea" style="display:none">
+<hr>
 <p> This tool is intended to help you locate potential areas of low quality content.  What should
  be done about items on this list depends on what it is and how much "moderation power" you have.
  <b>When possible, try to leave comments so that people understand why action was taken, 
- and have a chance to improve.</b>
+ and they have a chance to improve.</b>
  </p>
 
 
 <p>For answers:</P>
+<p>Answers show up on this list if they are below a certain score and are past a certain number of days old.</P>
 <ul>
 <li>If something is <b>not an answer</b> - it's a comment, another question, or makes no attempt to answer the
 question, <b>flag it.</b></li>
@@ -248,6 +255,8 @@ fixed posts if you can.</li>
 </ul>
 
 <p>For questions:</P>
+<p>Questions show up on this list if they are below a certain score, are a certain age, and are either closed or 
+<a href="http://meta.stackoverflow.com/q/11249/174131">unanswered.</a></P>
 <ul>
 <li>If something is not closed, but is <b>violating the FAQ</b> or established site policy - <b>vote to close it.</b></li>
 <li>If something <b>needs editing</b> - consider suggesting an edit or <b>edit it</b> to improve it.  Upvote 
@@ -256,7 +265,7 @@ fixed posts if you can.</li>
 </ul>
 
 
-
+<hr>
 
 </div>
 
