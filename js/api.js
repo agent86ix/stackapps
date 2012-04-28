@@ -8,6 +8,7 @@ var StackExchangeAPI = {
 	current_backoff: 0,
 	site_list: {},
 	site_list_ready: 0,
+	init_complete: null,
 
 	_get_access_token: function (client_id) {
 		var bits = window.location.href.split('#');
@@ -88,13 +89,7 @@ var StackExchangeAPI = {
 		
 	},
 	
-	populate_site_select: function(select_id, default_val) {
-	
-		if(StackExchangeAPI.site_list_ready == 0) {
-			setTimeout(function() {StackExchangeAPI.populate_site_select(select_id, default_val)}, 100);
-			return;
-		}
-	
+	_populate_site_select: function(select_id, default_val) {
 		var option_list = "";
 		
 		for(var site_id in StackExchangeAPI.site_list) {
@@ -104,6 +99,12 @@ var StackExchangeAPI = {
 		
 		$(select_id).html(option_list);
 		$(select_id).val(default_val);
+	},
+	
+	populate_site_select: function(select_id, default_val) {
+		StackExchangeAPI.init_complete.done(function() {
+			StackExchangeAPI._populate_site_select(select_id, default_val)
+		});
 	},
 	
 	_on_site_list_success: function(json) {
@@ -125,8 +126,7 @@ var StackExchangeAPI = {
 			};
 		}
 		
-		//setTimeout(function() {StackExchangeAPI.site_list_ready = 1}, 300);
-		StackExchangeAPI.site_list_ready = 1;
+		StackExchangeAPI.init_complete.resolve();
 	},
 	
 	_build_site_list: function() {
@@ -160,15 +160,14 @@ var StackExchangeAPI = {
 		StackExchangeAPI.current_backoff = StackExchangeAPI.default_backoff;
 		StackExchangeAPI.client_id = new_client_id;
 		$.extend(StackExchangeAPI.common_args, client_common_args);
+		
+		StackExchangeAPI.init_complete = $.Deferred();
 		StackExchangeAPI._build_site_list();
 	},
 
-	auth: function (cur_site, on_success, on_error) {
-		
-		if(StackExchangeAPI.site_list_ready == 0) {
-			setTimeout(function() {StackExchangeAPI.auth(cur_site, on_success, on_error)}, 100);
-			return;
-		}
+	
+	
+	_auth: function(cur_site, on_success, on_error) {
 		
 		StackExchangeAPI._get_access_token(StackExchangeAPI.client_id);
 		
@@ -179,6 +178,14 @@ var StackExchangeAPI = {
 				on_success(json);
 			}
 		}, on_error); 
+	},
+	
+	auth: function (cur_site, on_success, on_error) {
+		
+		StackExchangeAPI.init_complete.done(function() {
+			StackExchangeAPI._auth(cur_site, on_success, on_error)
+		});
+
 	}
 	
 	
