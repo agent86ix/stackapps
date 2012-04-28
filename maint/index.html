@@ -29,6 +29,12 @@ var user_site = "stackoverflow";
 var user_id = 0;
 
 var api = StackExchangeAPI;
+var client_id = 74;
+var args = {key:encodeURI('tD7YpcY3WuQGUz*f47P21g((')};
+
+api.init(client_id, args);
+
+
 var calls_remaining = 0;
 
 var question_filter = '!3wg4GB8fZ7Dv.7sqF';
@@ -55,14 +61,16 @@ function sort_output(a, b) {
 }
 
 function display_output() {
-	var output_html = "<ul>";
+	var count = 0;
+	var output_html = "";
 	results_list.sort(sort_output);
 	for(var i in results_list) {
 		var item = results_list[i];
 		output_html = output_html + "<li>"+item.output_html+"</li>"
+		count++;
 	}
-	
-	$('#output').html(output_html+"</ul>");
+	output_html = "<p>Total: "+count+" items found.</p><ul>"+output_html+"</ul>";
+	$('#output').html(output_html);
 }
 
 function on_query_success (json, query_id) {
@@ -174,8 +182,7 @@ function on_error(request, status, error) {
 }
 
 $(document).ready(function() {
-	var client_id = 74;
-	var args = {key:encodeURI('tD7YpcY3WuQGUz*f47P21g((')};
+
 	
 	try {
 		var stored_user_site = $.cookies.get('badges_user_site');
@@ -221,7 +228,7 @@ $(document).ready(function() {
 	});
 
 	reset_output();
-	api.init(client_id, args);
+	
 	api.populate_site_select("#siteselect", user_site);
 	api.auth(user_site, on_auth_success, on_auth_fail);
 	

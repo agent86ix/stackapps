@@ -74,15 +74,16 @@ var StackExchangeAPI = {
 					StackExchangeAPI.current_backoff = json.backoff*1000;
 				else
 					StackExchangeAPI.current_backoff = StackExchangeAPI.default_backoff;
+				StackExchangeAPI.timer_id = setTimeout( 
+					function () {StackExchangeAPI._process_api_call()}, 
+					StackExchangeAPI.current_backoff );
 				request[2](json);
 			}, 
 			dataType:"jsonp",
 			error: request[3]
 		});
 		
-		StackExchangeAPI.timer_id = setTimeout( 
-			function () {StackExchangeAPI._process_api_call()}, 
-			StackExchangeAPI.current_backoff );
+
 		
 		
 	},
@@ -114,15 +115,18 @@ var StackExchangeAPI = {
 		
 		for(var item_id in json.items) {
 			var item = json.items[item_id];
-			
+			if(!('api_site_parameter' in item)){
+				window.console.log("Weird!");
+				break;
+			}
 			StackExchangeAPI.site_list[item['api_site_parameter']] = {
 				name:item['name'],
 				site_url:item['site_url'],
 			};
 		}
 		
-		setTimeout(function() {StackExchangeAPI.site_list_ready = 1}, 100);
-		//StackExchangeAPI.site_list_ready = 1;
+		//setTimeout(function() {StackExchangeAPI.site_list_ready = 1}, 300);
+		StackExchangeAPI.site_list_ready = 1;
 	},
 	
 	_build_site_list: function() {
