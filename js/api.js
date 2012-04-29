@@ -4,11 +4,12 @@ var StackExchangeAPI = {
 	client_id: -1,
 	timer_id: null,
 	request_queue: [],
-	default_backoff: 1000,
+	default_backoff: 100,
 	current_backoff: 0,
 	site_list: {},
 	site_list_ready: 0,
 	init_complete: null,
+	call_status: 0,
 
 	_get_access_token: function (client_id) {
 		var bits = window.location.href.split('#');
@@ -66,19 +67,27 @@ var StackExchangeAPI = {
 			return;
 		}
 		
+		if(window.console) window.console.log("Dequeued new call ("+
+			StackExchangeAPI.request_queue.length+" remain) "+request[0]);
+		
+		StackExchangeAPI.call_status = 1;
 		$.ajax({
 			type: "GET",
 			url: "https://api.stackexchange.com/2.0/"+request[0], 
 			data: request[1], 
 			success: function(json) { 
+				if(window.console) window.console.log("Call complete to endpoint "+request[0]);
 				if('backoff' in json)
-					StackExchangeAPI.current_backoff = json.backoff*1000;
+					StackExchangeAPI.current_backoff = json.backoff*1100;
 				else
 					StackExchangeAPI.current_backoff = StackExchangeAPI.default_backoff;
 				StackExchangeAPI.timer_id = setTimeout( 
 					function () {StackExchangeAPI._process_api_call()}, 
 					StackExchangeAPI.current_backoff );
-				request[2](json);
+				if(StackExchangeAPI.call_status != 2) {
+					request[2](json);
+				} 
+				StackExchangeAPI.call_status = 0;
 			}, 
 			dataType:"jsonp",
 			error: request[3]
@@ -141,19 +150,24 @@ var StackExchangeAPI = {
 	},
 
 	call: function (api_call, args, on_success, on_error) {
+		if(window.console) window.console.log("New API call enqueued to endpoint "+api_call+" ("+
+			StackExchangeAPI.request_queue.length+" calls already in queue)"); 
+			
 		var api_args = $.extend({}, StackExchangeAPI.common_args, args);
 		StackExchangeAPI.request_queue.push([api_call, api_args, on_success, on_error]);
 		
 		if(StackExchangeAPI.timer_id == null) {
 			StackExchangeAPI.timer_id = setTimeout ( 
 				function () {StackExchangeAPI._process_api_call()}, 
-				100 );
+				StackExchangeAPI.current_backoff );
 		}
 	
-	},
+	}, 
 
 	abort_queue: function () {
-		api_request_queue = [];
+		if(window.console) window.console.log("** Aborting queue!");
+		StackExchangeAPI.request_queue = [];
+		if(StackExchangeAPI.call_status) StackExchangeAPI.call_status = 2;
 	},
 
 	init: function (new_client_id, client_common_args) {
