@@ -77,12 +77,12 @@ function on_top_tag_success(json) {
 			if(good_tag_count && good_tag_count%5 == 0) good_output = good_output + "</tr><tr>";
 			good_tag_count++;
 			good_output = good_output + '<td><a target="_blank" class=tag href="'+site_url+'/search?q=user:'
-				+user_id+'+['+tag+']">'+tag+"</a> ("+tag_score+")</td>";
+				+user_id+'+['+encodeURIComponent(tag)+']">'+tag+"</a> ("+tag_score+")</td>";
 		} else {
 			if(bad_tag_count && bad_tag_count%5 == 0) bad_output = bad_output + "</tr><tr>";
 			bad_tag_count++;
 			bad_output = bad_output + '<td><a target="_blank" class=tag href="'+site_url+'/search?q=user:'
-				+user_id+'+['+tag+']">'+tag+"</a> ("+tag_score+")</td>";
+				+user_id+'+['+encodeURIComponent(tag)+']">'+tag+"</a> ("+tag_score+")</td>";
 		}
 	}
 	
