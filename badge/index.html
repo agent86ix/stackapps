@@ -43,7 +43,7 @@ function on_top_tag_success(json) {
 	var good_output = "";
 	var bad_output = "";
 	var site_url = api.site_list[user_site].site_url;
-	var min_score = 16;
+	var min_score = 15;
 	
 	
 	
@@ -73,7 +73,7 @@ function on_top_tag_success(json) {
 			tag_score = user_tag_list[tag];
 			
 		}
-		if(tag_score > 15) {
+		if(tag_score >= 15) {
 			if(good_tag_count && good_tag_count%5 == 0) good_output = good_output + "</tr><tr>";
 			good_tag_count++;
 			good_output = good_output + '<td><a target="_blank" class=tag href="'+site_url+'/search?q=user:'
@@ -87,7 +87,7 @@ function on_top_tag_success(json) {
 	}
 	
 	var output = "<p>Top tags where your answer score is above 15: "+good_tag_count+"</p>\n"+
-		"<p>Top tags above 15 votes: </p><table border=0><tr>"+good_output+"</tr></table>\n"+
+		"<p>Top tags with 15 or more votes: </p><table border=0><tr>"+good_output+"</tr></table>\n"+
 		"<p>Top tags below 15 votes: </p><table border=0><tr>"+bad_output+"</tr></table>\n";
 	
 	$("#generalist-result").html(output);
