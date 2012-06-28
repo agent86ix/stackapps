@@ -43,7 +43,7 @@ function on_top_tag_success(json) {
 	var good_output = "";
 	var bad_output = "";
 	var site_url = api.site_list[user_site].site_url;
-	var min_score = 16;
+	var min_score = 15;
 	
 	
 	
@@ -55,7 +55,7 @@ function on_top_tag_success(json) {
 		}
 	}
 	
-	if(min_score >= 15 && top_tag_page < 5) {
+	if(min_score > min_score && top_tag_page < 5) {
 		top_tag_page = top_tag_page + 1;
 		api.call("/users/"+user_id+"/top-answer-tags/", 
 				{site: user_site, filter:'!n0IbH.9B9.', pagesize:50, page:top_tag_page}, 
@@ -73,7 +73,7 @@ function on_top_tag_success(json) {
 			tag_score = user_tag_list[tag];
 			
 		}
-		if(tag_score >= 15) {
+		if(tag_score >= min_score) {
 			if(good_tag_count && good_tag_count%5 == 0) good_output = good_output + "</tr><tr>";
 			good_tag_count++;
 			good_output = good_output + '<td><a target="_blank" class=tag href="'+site_url+'/search?q=user:'
