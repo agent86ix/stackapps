@@ -1,3 +1,14 @@
+/* This is a variation on the Markdown javascript that Stack Exchange uses, 
+   but changed to write (a limited subset of) BBCode instead of HTML.
+   
+   The original project is called pagedown, see:
+   http://code.google.com/p/pagedown/
+   
+   The original source is MIT Licensed, as is my version of it.
+   For license details and information, refer to:
+   http://opensource.org/licenses/mit-license.php
+*/
+
 var Markdown;
 
 if (typeof exports === "object" && typeof require === "function") // we're in a CommonJS (e.g. Node.js) module
