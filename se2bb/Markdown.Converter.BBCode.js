@@ -1088,11 +1088,14 @@ else
             //
             // Encode all ampersands; HTML entities are not
             // entities within a Markdown code span.
-            text = text.replace(/&/g, "&amp;");
+			
+            /* a86: may need to revisit this for BBCode, currently it doesn't parse
+			   html entities in my experience... */
+            //a86: nope text = text.replace(/&/g, "&amp;");
 
             // Do the angle bracket song and dance:
-            text = text.replace(/</g, "&lt;");
-            text = text.replace(/>/g, "&gt;");
+            //a86: nope text = text.replace(/</g, "&lt;");
+            //a86: nope text = text.replace(/>/g, "&gt;");
 
             // Now, escape characters that are magic in Markdown:
             text = escapeCharacters(text, "\*_{}[]\\", false);
