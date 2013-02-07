@@ -183,7 +183,7 @@ inject(function ($) {
 				'<p><a target="_blank" href="http://stackapps.com/questions/2985/">Feedback?  Support?  Visit this page.</a></p>'+
 				'<p><a target="_blank" href="http://agent86ix.github.com/stackapps/seci/">Need an access token?  Click here.</a></p>'+
 				'<p>Access token: <br><input id="seci_token_input" type=text size=40><button class="button" id="seci_cfg_token_save">Save</button></p>'+
-				'<p>Mark items as unread when you view them: <input type="checkbox" id="seci_clear_unread"></p>'+
+				'<p>Mark unread items as read when you view them: <input type="checkbox" id="seci_clear_unread"></p>'+
 				'</div>';
 			
 			var inbox_html = '<div id="seci_inbox_popup">'+cfg_html+
