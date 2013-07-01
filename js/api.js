@@ -141,7 +141,8 @@ var StackExchangeAPI = {
 	_build_site_list: function() {
 		$.ajax({
 			type: "GET",
-			url: "http://a86seapi.appspot.com/sites",
+			//url: "http://a86seapi.appspot.com/sites",
+			url:"http://api.stackexchange.com/2.1/sites?pagesize=1000",
 			success: function (json) {
 				StackExchangeAPI._on_site_list_success(json);
 			},
